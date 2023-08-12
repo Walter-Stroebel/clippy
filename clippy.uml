@@ -1,0 +1,27 @@
+@startuml
+
+class Clippy {
+    - HOME_DIRECTORY: File
+    - PORT: int
+    - latestData: AtomicReference<String>
+    - lastClipboardText: AtomicReference<String>
+    - workDir: AtomicReference<File>
+
+    + main(args: String[]): void
+    - initializeServerSocket(): void
+    - initializeClipboardMonitor(): void
+    - createNewGroup(): void
+    - selectExistingGroup(): void
+    - initializeWorkDir(): File
+    - resizeImage(originalImage: BufferedImage, width: int, height: int): BufferedImage
+    - getImageHash(image: BufferedImage): int
+}
+
+note bottom of Clippy
+    The Clippy class is a utility for clipboard management.
+    It monitors the system clipboard, detects changes, and saves text and image data to files.
+    It also supports the creation and selection of data groups and ensures that only one instance runs using a server socket.
+end note
+
+@enduml
+
