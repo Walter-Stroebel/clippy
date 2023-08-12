@@ -1,0 +1,209 @@
+package nl.wers.clippy;
+
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Arrays;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.Timer;
+
+public class Clippy {
+
+    // Setting up the home directory constant
+    public static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
+    private static final int PORT = 25432;
+    private static final AtomicReference<String> latestData = new AtomicReference<>();
+    private static final AtomicReference<String> lastClipboardText = new AtomicReference<>();
+    private static final AtomicReference<File> workDir = new AtomicReference<>();
+
+    public static void main(String[] args) {
+        if (!SystemTray.isSupported()) {
+            initializeServerSocket();
+            System.out.println("SystemTray is not supported");
+            return;
+        }
+        final PopupMenu popup = new PopupMenu();
+
+        // Creating a custom icon using BufferedImage and Graphics2D
+        BufferedImage iconImage = new BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = iconImage.createGraphics();
+
+        // Drawing a dark gray filled rectangle
+        g2d.setColor(Color.DARK_GRAY);
+        g2d.fillRect(6, 6, 12, 12);
+
+        // Drawing a lighter gray outlined rectangle on top
+        g2d.setColor(Color.LIGHT_GRAY);
+        g2d.drawRect(8, 8, 8, 8);
+
+        g2d.dispose();
+        final TrayIcon trayIcon = new TrayIcon(iconImage, "Clippy");
+
+        final SystemTray tray = SystemTray.getSystemTray();
+
+        // Add components to popup menu using ActionListener
+        MenuItem exitItem = new MenuItem("Exit");
+        exitItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                System.exit(0);
+            }
+        });
+        popup.add(exitItem);
+        // Add components to popup menu using ActionListener
+        MenuItem newGroupItem = new MenuItem("New Group");
+        newGroupItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                createNewGroup();
+            }
+        });
+        popup.add(newGroupItem);
+
+        MenuItem selectGroupItem = new MenuItem("Select Group");
+        selectGroupItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                selectExistingGroup();
+            }
+        });
+        popup.add(selectGroupItem);
+
+        trayIcon.setPopupMenu(popup);
+
+        try {
+            tray.add(trayIcon);
+        } catch (AWTException e) {
+            System.out.println("TrayIcon could not be added.");
+        }
+        initializeClipboardMonitor();
+    }
+
+    private static void initializeServerSocket() {
+        try {
+            final ServerSocket serverSocket = new ServerSocket(PORT, 0, InetAddress.getByName("localhost"));
+
+            // Start the handler in a new thread
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try ( Socket clientSocket = serverSocket.accept();  BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+                            String inputLine;
+                            StringBuilder receivedData = new StringBuilder();
+                            while ((inputLine = in.readLine()) != null) {
+                                receivedData.append(inputLine).append("\n");
+                            }
+                            latestData.set(receivedData.toString());
+                        } catch (IOException ex) {
+                            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                }
+            }).start();
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Another instance of Clippy is already running.", "Error", JOptionPane.ERROR_MESSAGE);
+            System.exit(0);
+        }
+    }
+
+    private static void initializeClipboardMonitor() {
+        final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        Timer timer = new Timer(1000, new ActionListener() {
+            private int lastImageHash;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Transferable contents = clipboard.getContents(null);
+                if (contents != null) {
+                    // Handle text data
+                    if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                        try {
+                            String currentText = (String) contents.getTransferData(DataFlavor.stringFlavor);
+                            if (!currentText.equals(lastClipboardText.get())) {
+                                lastClipboardText.set(currentText);
+                                File textFile = new File(workDir.get(), UUID.randomUUID().toString() + ".txt");
+                                try ( FileWriter writer = new FileWriter(textFile)) {
+                                    writer.write(currentText);
+                                }
+                            }
+                        } catch (Exception ex) {
+                            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+
+                    // Handle image data
+                    if (contents.isDataFlavorSupported(DataFlavor.imageFlavor)) {
+                        try {
+                            BufferedImage currentImage = (BufferedImage) contents.getTransferData(DataFlavor.imageFlavor);
+                            int currentHash = getImageHash(currentImage);
+                            // Assuming a variable lastImageHash to store the last detected image hash
+                            if (currentHash != lastImageHash) {
+                                lastImageHash = currentHash;
+                                File imageFile = new File(workDir.get(), UUID.randomUUID().toString() + ".png");
+                                ImageIO.write(currentImage, "png", imageFile);
+                            }
+                        } catch (Exception ex) {
+                            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                }
+            }
+
+            private BufferedImage resizeImage(BufferedImage originalImage, int width, int height) {
+                BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2d = resized.createGraphics();
+                g2d.drawImage(originalImage.getScaledInstance(width, height, Image.SCALE_SMOOTH), 0, 0, null);
+                g2d.dispose();
+                return resized;
+            }
+
+            private int getImageHash(BufferedImage image) {
+                BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
+                return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
+            }
+        });
+        timer.start();
+    }
+
+    private static void createNewGroup() {
+        String groupName = JOptionPane.showInputDialog(null, "Enter the name for the new group:", "New Group", JOptionPane.PLAIN_MESSAGE);
+        if (groupName != null && !groupName.trim().isEmpty()) {
+            File newGroupDir = new File(workDir.get(), groupName);
+            if (!newGroupDir.exists()) {
+                newGroupDir.mkdir();
+            }
+            workDir.set(newGroupDir);
+        }
+    }
+
+    private static void selectExistingGroup() {
+        JFileChooser chooser = new JFileChooser(workDir.get());
+        chooser.setDialogTitle("Select Group");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+            workDir.set(chooser.getSelectedFile());
+        }
+    }
+
+}
