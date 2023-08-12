@@ -3,6 +3,7 @@ package nl.wers.clippy;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -30,16 +31,15 @@ public class Clippy {
     // Setting up the home directory constant
     public static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
     private static final int PORT = 25432;
-    private static final AtomicReference<String> latestData = new AtomicReference<>();
-    private static final AtomicReference<String> lastClipboardText = new AtomicReference<>();
-    private static final AtomicReference<File> workDir = new AtomicReference<>();
 
     public static void main(String[] args) {
         if (!SystemTray.isSupported()) {
-            initializeServerSocket();
             System.out.println("SystemTray is not supported");
             return;
         }
+        final Clippy instance = new Clippy();
+        instance.initializeServerSocket();
+
         final PopupMenu popup = new PopupMenu();
 
         // Creating a custom icon using BufferedImage and Graphics2D
@@ -73,7 +73,7 @@ public class Clippy {
         newGroupItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                createNewGroup();
+                instance.createNewGroup();
             }
         });
         popup.add(newGroupItem);
@@ -82,7 +82,7 @@ public class Clippy {
         selectGroupItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                selectExistingGroup();
+                instance.selectExistingGroup();
             }
         });
         popup.add(selectGroupItem);
@@ -94,10 +94,42 @@ public class Clippy {
         } catch (AWTException e) {
             System.out.println("TrayIcon could not be added.");
         }
-        initializeClipboardMonitor();
+        instance.initializeClipboardMonitor();
+    }
+    private final AtomicReference<String> latestData = new AtomicReference<>();
+    private final AtomicReference<String> lastClipboardText = new AtomicReference<>();
+
+    private final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
+
+    private File initializeWorkDir() {
+        File homeDir = new File(HOME_DIRECTORY, ".clippy");
+        if (!homeDir.exists()) {
+            homeDir.mkdir();
+        }
+
+        File defaultGroup = new File(homeDir, "default");
+        if (!defaultGroup.exists()) {
+            defaultGroup.mkdir();
+        }
+
+        return defaultGroup;
     }
 
-    private static void initializeServerSocket() {
+    private void placeOnClipboard(String... texts) {
+        StringBuilder combinedText = new StringBuilder();
+        for (String text : texts) {
+            combinedText.append(text);
+        }
+        String finalText = combinedText.toString();
+        lastClipboardText.set(finalText);  // Set the lastClipboardText to avoid re-processing
+
+        // Now, place the finalText on the clipboard
+        StringSelection selection = new StringSelection(finalText);
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(selection, selection);
+    }
+
+    private void initializeServerSocket() {
         try {
             final ServerSocket serverSocket = new ServerSocket(PORT, 0, InetAddress.getByName("localhost"));
 
@@ -126,7 +158,7 @@ public class Clippy {
         }
     }
 
-    private static void initializeClipboardMonitor() {
+    private void initializeClipboardMonitor() {
         final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         Timer timer = new Timer(1000, new ActionListener() {
             private int lastImageHash;
@@ -185,10 +217,10 @@ public class Clippy {
         timer.start();
     }
 
-    private static void createNewGroup() {
+    private void createNewGroup() {
         String groupName = JOptionPane.showInputDialog(null, "Enter the name for the new group:", "New Group", JOptionPane.PLAIN_MESSAGE);
         if (groupName != null && !groupName.trim().isEmpty()) {
-            File newGroupDir = new File(workDir.get(), groupName);
+            File newGroupDir = new File(workDir.get().getParentFile(), groupName);
             if (!newGroupDir.exists()) {
                 newGroupDir.mkdir();
             }
@@ -196,8 +228,8 @@ public class Clippy {
         }
     }
 
-    private static void selectExistingGroup() {
-        JFileChooser chooser = new JFileChooser(workDir.get());
+    private void selectExistingGroup() {
+        JFileChooser chooser = new JFileChooser(workDir.get().getParentFile());
         chooser.setDialogTitle("Select Group");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         chooser.setAcceptAllFileFilterUsed(false);
