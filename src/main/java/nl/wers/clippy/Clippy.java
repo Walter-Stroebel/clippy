@@ -38,7 +38,16 @@ public class Clippy {
             return;
         }
         final Clippy instance = new Clippy();
-        instance.initializeServerSocket();
+        instance.init();
+    }
+
+    private final AtomicReference<String> latestData = new AtomicReference<>();
+    private final AtomicReference<String> lastClipboardText = new AtomicReference<>();
+
+    private final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
+
+    private void init() throws HeadlessException {
+        initializeServerSocket();
 
         final PopupMenu popup = new PopupMenu();
 
@@ -73,7 +82,7 @@ public class Clippy {
         newGroupItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                instance.createNewGroup();
+                createNewGroup();
             }
         });
         popup.add(newGroupItem);
@@ -82,7 +91,7 @@ public class Clippy {
         selectGroupItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                instance.selectExistingGroup();
+                selectExistingGroup();
             }
         });
         popup.add(selectGroupItem);
@@ -94,12 +103,8 @@ public class Clippy {
         } catch (AWTException e) {
             System.out.println("TrayIcon could not be added.");
         }
-        instance.initializeClipboardMonitor();
+        initializeClipboardMonitor();
     }
-    private final AtomicReference<String> latestData = new AtomicReference<>();
-    private final AtomicReference<String> lastClipboardText = new AtomicReference<>();
-
-    private final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
 
     private File initializeWorkDir() {
         File homeDir = new File(HOME_DIRECTORY, ".clippy");
