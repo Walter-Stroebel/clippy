@@ -39,7 +39,7 @@ public class Clippy {
     // Setting up the home directory constant
     public static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
     private static final int PORT = 25432;
-    
+
     public static void main(String[] args) {
         if (!SystemTray.isSupported()) {
             System.out.println("SystemTray is not supported");
@@ -48,15 +48,15 @@ public class Clippy {
         final Clippy instance = new Clippy();
         instance.init();
     }
-    
+
     private final AtomicReference<String> latestData = new AtomicReference<>();
     private final AtomicReference<String> lastClipboardText = new AtomicReference<>();
-    
+
     private final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
-    
+
     private void init() throws HeadlessException {
         initializeServerSocket();
-        
+
         final PopupMenu popup = new PopupMenu();
 
         // Creating a custom icon using BufferedImage and Graphics2D
@@ -70,10 +70,10 @@ public class Clippy {
         // Drawing a lighter gray outlined rectangle on top
         g2d.setColor(Color.LIGHT_GRAY);
         g2d.drawRect(8, 8, 8, 8);
-        
+
         g2d.dispose();
         final TrayIcon trayIcon = new TrayIcon(iconImage, "Clippy");
-        
+
         final SystemTray tray = SystemTray.getSystemTray();
 
         // Add components to popup menu using ActionListener
@@ -94,7 +94,7 @@ public class Clippy {
             }
         });
         popup.add(newGroupItem);
-        
+
         MenuItem selectGroupItem = new MenuItem("Select Group");
         selectGroupItem.addActionListener(new ActionListener() {
             @Override
@@ -103,9 +103,9 @@ public class Clippy {
             }
         });
         popup.add(selectGroupItem);
-        
+
         trayIcon.setPopupMenu(popup);
-        
+
         try {
             tray.add(trayIcon);
         } catch (AWTException e) {
@@ -113,21 +113,21 @@ public class Clippy {
         }
         initializeClipboardMonitor();
     }
-    
+
     private File initializeWorkDir() {
         File homeDir = new File(HOME_DIRECTORY, ".clippy");
         if (!homeDir.exists()) {
             homeDir.mkdir();
         }
-        
+
         File defaultGroup = new File(homeDir, "default");
         if (!defaultGroup.exists()) {
             defaultGroup.mkdir();
         }
-        
+
         return defaultGroup;
     }
-    
+
     private void placeOnClipboard(String... texts) {
         StringBuilder combinedText = new StringBuilder();
         for (String text : texts) {
@@ -141,7 +141,7 @@ public class Clippy {
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         clipboard.setContents(selection, selection);
     }
-    
+
     private void initializeServerSocket() {
         try {
             final ServerSocket serverSocket = new ServerSocket(PORT, 0, InetAddress.getByName("localhost"));
@@ -164,19 +164,19 @@ public class Clippy {
                     }
                 }
             }).start();
-            
+
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Another instance of Clippy is already running.", "Error", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
         }
     }
-    
+
     private void initializeClipboardMonitor() {
         final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         Timer timer = new Timer(1000, new ClipboardMonitor(clipboard));
         timer.start();
     }
-    
+
     private void createNewGroup() {
         String groupName = JOptionPane.showInputDialog(null, "Enter the name for the new group:", "New Group", JOptionPane.PLAIN_MESSAGE);
         if (groupName != null && !groupName.trim().isEmpty()) {
@@ -187,7 +187,7 @@ public class Clippy {
             workDir.set(newGroupDir);
         }
     }
-    
+
     private void selectExistingGroup() {
         JFileChooser chooser = new JFileChooser(workDir.get().getParentFile());
         chooser.setDialogTitle("Select Group");
@@ -197,16 +197,16 @@ public class Clippy {
             workDir.set(chooser.getSelectedFile());
         }
     }
-    
+
     class ClipboardMonitor implements ActionListener {
-        
+
         private final Clipboard clipboard;
-        
+
         public ClipboardMonitor(Clipboard clipboard) {
             this.clipboard = clipboard;
         }
         private int lastImageHash;
-        
+
         @Override
         public void actionPerformed(ActionEvent e) {
             Transferable contents = clipboard.getContents(null);
@@ -221,6 +221,14 @@ public class Clippy {
                             // Check for plantUML content
                             if (currentText.startsWith("@startuml")) {
                                 handlePlantUML(lastClipboardText.get());
+                            } else {
+                                File outputFile = new File(workDir.get(), UUID.randomUUID().toString() + ".txt");
+                                // Save the current text to the new file
+                                try ( FileWriter writer = new FileWriter(outputFile)) {
+                                    writer.write(currentText);
+                                } catch (IOException ex) {
+                                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                                }
                             }
                         }
                     } catch (Exception ex) {
@@ -244,13 +252,13 @@ public class Clippy {
                 }
             }
         }
-        
+
         private void handlePlantUML(String currentText) {
             JTextField filenameField = new JTextField(15);
             JPanel panel = new JPanel();
             panel.add(new JLabel("Filename (without extension):"));
             panel.add(filenameField);
-            
+
             Object[] options = {"PNG", "ASCII", "Cancel"};
             int choice = JOptionPane.showOptionDialog(null, panel, "PlantUML", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 
@@ -258,7 +266,7 @@ public class Clippy {
             if (choice == 2 || filenameField.getText().trim().isEmpty()) {
                 return;
             }
-            
+
             String filename = filenameField.getText().trim();
             String fullFilename = filename + ".txt";
             File outputFile = new File(workDir.get(), fullFilename);
@@ -276,7 +284,7 @@ public class Clippy {
             } catch (IOException ex) {
                 Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
             }
-            
+
             String formatFlag = (choice == 1) ? "-ttxt" : "-tpng"; // Use -ttxt for ASCII, default to -tpng
 
             // Run PlantUML
@@ -285,13 +293,13 @@ public class Clippy {
                 pb.directory(workDir.get());
                 Process process = pb.start();
                 process.waitFor();
-                
+
                 if (choice == 1) {
                     File asciiOutputFile = new File(workDir.get(), filename + ".atxt");
                     String asciiContent = new String(Files.readAllBytes(asciiOutputFile.toPath()), StandardCharsets.UTF_8);
                     placeOnClipboard(asciiContent);
                 }
-                
+
             } catch (Exception e) {
                 Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
             }
@@ -307,10 +315,10 @@ public class Clippy {
             JLabel label = new JLabel(imageIcon);
             JScrollPane scrollPane = new JScrollPane(label);
             frame.add(scrollPane);
-            
+
             frame.setVisible(true);
         }
-        
+
         private BufferedImage resizeImage(BufferedImage originalImage, int width, int height) {
             BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = resized.createGraphics();
@@ -318,11 +326,11 @@ public class Clippy {
             g2d.dispose();
             return resized;
         }
-        
+
         private int getImageHash(BufferedImage image) {
             BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
             return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
         }
     }
-    
+
 }
