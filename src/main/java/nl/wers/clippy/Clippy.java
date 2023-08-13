@@ -27,7 +27,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -55,6 +54,19 @@ import javax.swing.Timer;
  * for incoming connections.</li>
  * <li>Monitors the clipboard contents periodically.</li>
  * <li>Manages directories (groups) under the ".clippy" directory.</li>
+ * </ul>
+ * </p><p>
+ * Design notes.
+ * <ul>
+ * <li>The designer dislikes lambda's as they hide implementation details.
+ * Likewise, implicit immutability of variables leads unnatural coding as in the
+ * develops mind, the variable could be modified, only discovering later that it
+ * can not. So, the code base has the Java level set to 7 but of course any JRE
+ * can be used. Testing was done on JRE11.</li>
+ * <li>All of the application was designed and written by one developer and one
+ * LLM, some inconsistency exists, live with it or make a pull request and fix
+ * it :)</li>
+ * <li>WIP User interface.</li>
  * </ul>
  *
  * @author Walter Stroebel
@@ -87,16 +99,16 @@ public class Clippy {
      * Holds the latest data received from the server socket.
      */
 
-    private final AtomicReference<String> latestData = new AtomicReference<>();
+    final AtomicReference<String> latestData = new AtomicReference<>();
     /**
      * Holds the last text content detected on the clipboard.
      */
-    private final AtomicReference<String> lastClipboardText = new AtomicReference<>();
+    final AtomicReference<String> lastClipboardText = new AtomicReference<>();
 
     /**
      * Represents the current working directory for the application.
      */
-    private final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
+    final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
     private final ClippyFrame gui;
 
     /**
@@ -243,34 +255,6 @@ public class Clippy {
         final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         Timer timer = new Timer(1000, new ClipboardMonitor(clipboard));
         timer.start();
-    }
-
-    /**
-     * Creates a new group (directory) under the ".clippy" directory.
-     */
-    void createNewGroup() {
-        String groupName = JOptionPane.showInputDialog(null, "Enter the name for the new group:", "New Group", JOptionPane.PLAIN_MESSAGE);
-        if (groupName != null && !groupName.trim().isEmpty()) {
-            File newGroupDir = new File(workDir.get().getParentFile(), groupName);
-            if (!newGroupDir.exists()) {
-                newGroupDir.mkdir();
-            }
-            workDir.set(newGroupDir);
-        }
-    }
-
-    /**
-     * Allows the user to select an existing group (directory) under the
-     * ".clippy" directory.
-     */
-    void selectExistingGroup() {
-        JFileChooser chooser = new JFileChooser(workDir.get().getParentFile());
-        chooser.setDialogTitle("Select Group");
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        chooser.setAcceptAllFileFilterUsed(false);
-        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-            workDir.set(chooser.getSelectedFile());
-        }
     }
 
     /**
