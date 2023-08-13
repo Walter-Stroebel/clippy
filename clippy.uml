@@ -1,27 +1,65 @@
 @startuml
 
-class Clippy {
-    - HOME_DIRECTORY: File
-    - PORT: int
-    - latestData: AtomicReference<String>
-    - lastClipboardText: AtomicReference<String>
-    - workDir: AtomicReference<File>
-
-    + main(args: String[]): void
-    - initializeServerSocket(): void
-    - initializeClipboardMonitor(): void
-    - createNewGroup(): void
-    - selectExistingGroup(): void
-    - initializeWorkDir(): File
-    - resizeImage(originalImage: BufferedImage, width: int, height: int): BufferedImage
-    - getImageHash(image: BufferedImage): int
+skinparam class {
+    BackgroundColor<<note>> Wheat
+    BorderColor<<note>> Wheat
 }
 
-note bottom of Clippy
-    The Clippy class is a utility for clipboard management.
-    It monitors the system clipboard, detects changes, and saves text and image data to files.
-    It also supports the creation and selection of data groups and ensures that only one instance runs using a server socket.
-end note
+package "Clippy Application" {
+
+    class Clippy {
+        +HOME_DIRECTORY: File
+        +PORT: int
+        -latestData: AtomicReference<String>
+        -lastClipboardText: AtomicReference<String>
+        -workDir: AtomicReference<File>
+        --
+        +main(args: String[]): void
+        +Clippy()
+        -init(): void
+        -initializeWorkDir(): File
+        -placeOnClipboard(texts: String...): void
+        -initializeServerSocket(): void
+        -initializeClipboardMonitor(): void
+        +createNewGroup(): void
+        +selectExistingGroup(): void
+    }
+
+    class ClipboardMonitor {
+        -clipboard: Clipboard
+        -lastImageHash: int
+        --
+        +ClipboardMonitor(clipboard: Clipboard)
+        +actionPerformed(e: ActionEvent): void
+        -handlePlantUML(currentText: String): void
+        -displayImage(imageFile: File): void
+        -resizeImage(originalImage: BufferedImage, width: int, height: int): BufferedImage
+        -getImageHash(image: BufferedImage): int
+    }
+
+    class ClippyFrame {
+        --
+        +ClippyFrame(clippy: Clippy)
+    }
+
+    Clippy *-- ClipboardMonitor : contains >
+    Clippy *-- ClippyFrame : has >
+
+    note as N1
+    The Clippy class initializes and manages
+    the system tray application, handling clipboard
+    and server socket functionalities.
+    end note
+
+    note as N2
+    The ClipboardMonitor class monitors the
+    system clipboard for changes, handling both
+    text and image content accordingly.
+    end note
+
+    Clippy .. N1
+    ClipboardMonitor .. N2
+
+}
 
 @enduml
-

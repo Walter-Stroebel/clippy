@@ -7,6 +7,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
@@ -28,21 +30,51 @@ import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+/**
+ * Clippy is a system tray application designed to monitor the clipboard and
+ * provide server socket functionality. It is primarily meant as an aid when
+ * working with LLM's in a chat interface, using the clipboard as a out-of-bound
+ * communication channel.
+ *
+ * <p>
+ * Key Features:
+ * <ul>
+ * <li>Initializes a custom tray icon and adds it to the system tray.</li>
+ * <li>Displays the GUI when the tray icon is left-clicked.</li>
+ * <li>Manages a working directory inside the user's home directory under
+ * ".clippy".</li>
+ * <li>Provides functionality to place text on the clipboard.</li>
+ * <li>Initializes a server socket on port 25432 bound to localhost to listen
+ * for incoming connections.</li>
+ * <li>Monitors the clipboard contents periodically.</li>
+ * <li>Manages directories (groups) under the ".clippy" directory.</li>
+ * </ul>
+ *
+ * @author Walter Stroebel
+ * @version 1.0
+ */
 public class Clippy {
 
-    // Setting up the home directory constant
+    /**
+     * The home directory constant, pointing to the user's home directory.
+     */
     public static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
+    /**
+     * The port number used for the server socket functionality.
+     */
     private static final int PORT = 25432;
 
+    /**
+     * Initializes the Clippy system tray application. Checks for system tray
+     * support and sets up the tray icon and its functionalities.
+     */
     public static void main(String[] args) {
         if (!SystemTray.isSupported()) {
             System.out.println("SystemTray is not supported");
@@ -51,12 +83,36 @@ public class Clippy {
         final Clippy instance = new Clippy();
         instance.init();
     }
+    /**
+     * Holds the latest data received from the server socket.
+     */
 
     private final AtomicReference<String> latestData = new AtomicReference<>();
+    /**
+     * Holds the last text content detected on the clipboard.
+     */
     private final AtomicReference<String> lastClipboardText = new AtomicReference<>();
 
+    /**
+     * Represents the current working directory for the application.
+     */
     private final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
+    private final ClippyFrame gui;
 
+    /**
+     * Constructor for the Clippy class. Initializes the GUI frame for the
+     * application.
+     */
+    public Clippy() {
+        this.gui = new ClippyFrame(this);
+    }
+
+    /**
+     * Initializes the system tray icon, server socket, and clipboard monitor.
+     *
+     * @throws HeadlessException if GraphicsEnvironment.isHeadless() returns
+     * true
+     */
     private void init() throws HeadlessException {
         initializeServerSocket();
 
@@ -88,26 +144,16 @@ public class Clippy {
             }
         });
         popup.add(exitItem);
-        // Add components to popup menu using ActionListener
-        MenuItem newGroupItem = new MenuItem("New Group");
-        newGroupItem.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                createNewGroup();
-            }
-        });
-        popup.add(newGroupItem);
-
-        MenuItem selectGroupItem = new MenuItem("Select Group");
-        selectGroupItem.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                selectExistingGroup();
-            }
-        });
-        popup.add(selectGroupItem);
 
         trayIcon.setPopupMenu(popup);
+        trayIcon.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    gui.setVisible(true);
+                }
+            }
+        });
 
         try {
             tray.add(trayIcon);
@@ -117,6 +163,12 @@ public class Clippy {
         initializeClipboardMonitor();
     }
 
+    /**
+     * Initializes the working directory for the application under the user's
+     * home directory. If the directory doesn't exist, it creates one.
+     *
+     * @return The default working directory.
+     */
     private File initializeWorkDir() {
         File homeDir = new File(HOME_DIRECTORY, ".clippy");
         if (!homeDir.exists()) {
@@ -131,7 +183,12 @@ public class Clippy {
         return defaultGroup;
     }
 
-    private void placeOnClipboard(String... texts) {
+    /**
+     * Places the provided texts onto the system clipboard.
+     *
+     * @param texts The array of texts to be placed on the clipboard.
+     */
+    void placeOnClipboard(String... texts) {
         StringBuilder combinedText = new StringBuilder();
         for (String text : texts) {
             combinedText.append(text);
@@ -145,6 +202,10 @@ public class Clippy {
         clipboard.setContents(selection, selection);
     }
 
+    /**
+     * Initializes a server socket on port 25432 bound to localhost. Listens for
+     * incoming connections and reads data from them.
+     */
     private void initializeServerSocket() {
         try {
             final ServerSocket serverSocket = new ServerSocket(PORT, 0, InetAddress.getByName("localhost"));
@@ -174,13 +235,20 @@ public class Clippy {
         }
     }
 
+    /**
+     * Initializes a clipboard monitor that checks the clipboard contents
+     * periodically.
+     */
     private void initializeClipboardMonitor() {
         final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         Timer timer = new Timer(1000, new ClipboardMonitor(clipboard));
         timer.start();
     }
 
-    private void createNewGroup() {
+    /**
+     * Creates a new group (directory) under the ".clippy" directory.
+     */
+    void createNewGroup() {
         String groupName = JOptionPane.showInputDialog(null, "Enter the name for the new group:", "New Group", JOptionPane.PLAIN_MESSAGE);
         if (groupName != null && !groupName.trim().isEmpty()) {
             File newGroupDir = new File(workDir.get().getParentFile(), groupName);
@@ -191,7 +259,11 @@ public class Clippy {
         }
     }
 
-    private void selectExistingGroup() {
+    /**
+     * Allows the user to select an existing group (directory) under the
+     * ".clippy" directory.
+     */
+    void selectExistingGroup() {
         JFileChooser chooser = new JFileChooser(workDir.get().getParentFile());
         chooser.setDialogTitle("Select Group");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -201,15 +273,32 @@ public class Clippy {
         }
     }
 
+    /**
+     * Inner class responsible for monitoring the system clipboard for changes.
+     * It checks for both text and image content and handles them accordingly.
+     */
     private class ClipboardMonitor implements ActionListener {
 
+        /**
+         * The system clipboard instance.
+         */
         private final Clipboard clipboard;
 
+        /**
+         * Constructor for the ClipboardMonitor class.
+         *
+         * @param clipboard The system clipboard instance.
+         */
         public ClipboardMonitor(Clipboard clipboard) {
             this.clipboard = clipboard;
         }
         private int lastImageHash;
 
+        /**
+         * Checks the clipboard for changes in its content and handles them.
+         *
+         * @param e The action event triggering this method.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Transferable contents = clipboard.getContents(null);
@@ -256,6 +345,11 @@ public class Clippy {
             }
         }
 
+        /**
+         * Handles PlantUML content detected on the clipboard.
+         *
+         * @param currentText The detected PlantUML content.
+         */
         private void handlePlantUML(String currentText) {
             JTextField filenameField = new JTextField(15);
             JPanel panel = new JPanel();
@@ -301,6 +395,9 @@ public class Clippy {
                     File asciiOutputFile = new File(workDir.get(), filename + ".atxt");
                     String asciiContent = new String(Files.readAllBytes(asciiOutputFile.toPath()), StandardCharsets.UTF_8);
                     placeOnClipboard(asciiContent);
+                } else {
+                    File pngOutputFile = new File(workDir.get(), filename + ".png");
+                    displayImage(pngOutputFile);
                 }
 
             } catch (Exception e) {
@@ -308,6 +405,11 @@ public class Clippy {
             }
         }
 
+        /**
+         * Displays an image in a JFrame.
+         *
+         * @param imageFile The file containing the image to display.
+         */
         private void displayImage(File imageFile) {
             JFrame frame = new JFrame("Generated UML Diagram");
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -322,6 +424,14 @@ public class Clippy {
             frame.setVisible(true);
         }
 
+        /**
+         * Resizes a given image to the specified width and height.
+         *
+         * @param originalImage The original image to resize.
+         * @param width The desired width.
+         * @param height The desired height.
+         * @return The resized image.
+         */
         private BufferedImage resizeImage(BufferedImage originalImage, int width, int height) {
             BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = resized.createGraphics();
@@ -330,53 +440,17 @@ public class Clippy {
             return resized;
         }
 
+        /**
+         * Computes a hash for the given image. This is used to detect changes
+         * in the image content.
+         *
+         * @param image The image to compute the hash for.
+         * @return The computed hash value.
+         */
         private int getImageHash(BufferedImage image) {
             BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
             return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
         }
     }
-
-    class ClippyFrame extends JFrame {
-        public ClippyFrame() {
-            setTitle("Clippy");
-            setSize(400, 300);
-            setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            setLocationRelativeTo(null);
-
-            JMenuBar menuBar = new JMenuBar();
-            JMenu menu = new JMenu("Options");
-            menuBar.add(menu);
-
-            JMenuItem exitItem = new JMenuItem("Exit");
-            exitItem.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    System.exit(0);
-                }
-            });
-            menu.add(exitItem);
-
-            JMenuItem newGroupItem = new JMenuItem("New Group");
-            newGroupItem.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    createNewGroup();
-                }
-            });
-            menu.add(newGroupItem);
-
-            JMenuItem selectGroupItem = new JMenuItem("Select Group");
-            selectGroupItem.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    selectExistingGroup();
-                }
-            });
-            menu.add(selectGroupItem);
-
-            setJMenuBar(menuBar);
-        }
-    }
-
 
 }
