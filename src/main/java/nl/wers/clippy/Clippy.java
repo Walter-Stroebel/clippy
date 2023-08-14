@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -209,7 +210,7 @@ public class Clippy {
     void placeOnClipboard(String... texts) {
         StringBuilder combinedText = new StringBuilder();
         for (String text : texts) {
-            combinedText.append(text);
+            combinedText.append(null == text ? "(null)" : text);
         }
         String finalText = combinedText.toString();
         lastClipboardText.set(finalText);  // Set the lastClipboardText to avoid re-processing
@@ -335,6 +336,16 @@ public class Clippy {
                             // Check for plantUML content
                             if (currentText.startsWith("@startuml")) {
                                 handlePlantUML(lastClipboardText.get());
+                            } else if (currentText.contains("$@")) {
+                                int cmd = currentText.indexOf("$@");
+                                while (cmd >= 0) {
+                                    int eoc = currentText.indexOf("@$", cmd);
+                                    if (eoc > cmd + 2) {
+                                        handleCommand(currentText.substring(cmd + 2, eoc));
+                                        currentText = new StringBuilder(currentText).delete(cmd, eoc).toString();
+                                        cmd = currentText.indexOf("$@");
+                                    }
+                                }
                             } else {
                                 File outputFile = new File(workDir.get(), UUID.randomUUID().toString() + ".txt");
                                 // Save the current text to the new file
@@ -472,6 +483,53 @@ public class Clippy {
         private int getImageHash(BufferedImage image) {
             BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
             return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
+        }
+
+    }
+
+    private void handleCommand(String cmdString) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmdString.split(" ")));
+            pb.redirectErrorStream(true);
+            final Process process = pb.start();
+
+            // To capture output
+            final StringBuilder output = new StringBuilder();
+            Thread outputThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    BufferedReader reader = null;
+                    try {
+                        reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            output.append(line).append("\n");
+                        }
+                    } catch (IOException e) {
+                        Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
+                    } finally {
+                        if (reader != null) {
+                            try {
+                                reader.close();
+                            } catch (IOException e) {
+                                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
+                            }
+                        }
+                    }
+                }
+            });
+            outputThread.start();
+
+            if (process.waitFor(10, TimeUnit.SECONDS)) {
+                outputThread.join(); // Wait for the output reading thread to finish
+                placeOnClipboard(output.toString());
+            } else {
+                process.destroy();
+                placeOnClipboard("Your command ", cmdString, " timed out");
+            }
+        } catch (Exception ex) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+            placeOnClipboard("Your command ", cmdString, " caused exception ", ex.getMessage());
         }
     }
 
