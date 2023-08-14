@@ -6,6 +6,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -14,13 +15,22 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.AbstractAction;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
 
 /**
  * ClippyFrame represents the main GUI for the Clippy application, providing an
@@ -78,9 +88,10 @@ public class ClippyFrame extends JFrame {
         int width = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "width"));
         int height = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "height"));
         setBounds(x, y, width, height);
-
+        setAlwaysOnTop(true);
         // Check if the window was maximized last session and set accordingly
         boolean wasMaximized = Boolean.parseBoolean(config.getProperty(Config.SECTIONS.GUI, "maximized"));
+        System.out.format("Showing GUI at %d,%d as %dx%d; max=%s\n", x, y, width, height, wasMaximized);
         if (wasMaximized) {
             setExtendedState(JFrame.MAXIMIZED_BOTH);
         }
@@ -134,7 +145,7 @@ public class ClippyFrame extends JFrame {
         getContentPane().add(toolBar, BorderLayout.NORTH);
         addGroupTab("Sample Group", clippy);
         // In your GUI initialization method, add the mouse listener to the parent container
-        tabbedPane.addMouseListener(new ItemMouseListener(tabbedPane));
+        tabbedPane.addMouseListener(new ItemMouseListener(clippy, tabbedPane));
     }
 
     private void updateConfig() {
@@ -170,7 +181,7 @@ public class ClippyFrame extends JFrame {
         JButton copyButton = new JButton(new AbstractAction("Copy") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                // Placeholder: Copy action for this group
+                // TODO copy the selected item, if any, to the clipboard.
             }
         });
         groupToolBar.add(copyButton);
@@ -195,11 +206,31 @@ public class ClippyFrame extends JFrame {
         File[] files = groupDir.listFiles();
         if (files != null) {
             for (File file : files) {
-                // Check if the file is a text or image
-                if (file.getName().endsWith(".PNG")) {
-                    // TODO: Create an image thumbnail and add it to the panel
-                } else {
-                    // TODO: Read the text file, truncate if necessary, and add a JTextArea to the panel
+                // Skip hidden files
+                if (file.getName().startsWith("hide_")) {
+                    continue;
+                }
+
+                // Handling PNG files
+                if (file.getName().toLowerCase().endsWith(".png")) {
+                    ImageIcon icon = new ImageIcon(file.getAbsolutePath()); // Load the image
+                    Image img = icon.getImage().getScaledInstance(100, 100, Image.SCALE_FAST); // Create a thumbnail of fixed size, say 100x100
+                    JLabel imgLabel = new JLabel(new ImageIcon(img));
+                    imgLabel.setName(file.getName()); // Set file name as the component name for later retrieval
+                    panel.add(imgLabel);
+                } else { // Handling text files
+                    try {
+                        String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+                        if (content.length() > 500) { // Truncate after 500 characters for display purposes
+                            content = content.substring(0, 500) + "...";
+                        }
+                        JTextArea textArea = new JTextArea(content);
+                        textArea.setEditable(false);
+                        textArea.setName(file.getName()); // Set file name as the component name for later retrieval
+                        panel.add(textArea);
+                    } catch (IOException ex) {
+                        Logger.getLogger(ClippyFrame.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
             }
         }
@@ -219,8 +250,10 @@ public class ClippyFrame extends JFrame {
     private class ItemMouseListener extends MouseAdapter {
 
         private final Container cont;
+        private final Clippy clippy;
 
-        public ItemMouseListener(Container cont) {
+        public ItemMouseListener(Clippy clippy, Container cont) {
+            this.clippy = clippy;
             this.cont = cont;
         }
 
@@ -230,15 +263,10 @@ public class ClippyFrame extends JFrame {
             for (Component comp : cont.getComponents()) { // Assuming 'centerPanel' is the parent container
                 if (comp.getBounds().contains(e.getPoint())) {
                     // Handle left-click
-                    if (e.getButton() == MouseEvent.BUTTON1) {
-                        // Selection logic here
-                        // For instance, if you have a method to handle selection:
-                        // handleSelection(comp);
-                    } // Handle right-click
-                    else if (e.getButton() == MouseEvent.BUTTON3) {
-                        // Hide logic here
-                        // For instance, if you have a method to handle hiding:
-                        // handleHide(comp);
+                    if (SwingUtilities.isLeftMouseButton(e)) {
+                        clippy.toClipboardItem(comp.getName());
+                    } else if (SwingUtilities.isRightMouseButton(e)) {
+                        clippy.hideItem(comp.getName());
                     }
                     break; // Exit loop once the clicked component is found
                 }

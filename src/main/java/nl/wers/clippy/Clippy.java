@@ -77,7 +77,7 @@ public class Clippy {
     /**
      * The home directory constant, pointing to the user's home directory.
      */
-    public static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
+    private static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
     /**
      * The port number used for the server socket functionality.
      */
@@ -255,6 +255,38 @@ public class Clippy {
         final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         Timer timer = new Timer(1000, new ClipboardMonitor(clipboard));
         timer.start();
+    }
+
+    void toClipboardItem(String name) {
+        File fileToRead = new File(workDir.get(), name);
+        if (fileToRead.exists() && fileToRead.isFile()) {
+            try {
+                String content = new String(Files.readAllBytes(fileToRead.toPath()), StandardCharsets.UTF_8);
+                placeOnClipboard(content);
+            } catch (IOException ex) {
+                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", name);
+        }
+    }
+
+    void hideItem(String name) {
+        File originalFile = new File(workDir.get(), name);
+        if (originalFile.exists() && originalFile.isFile()) {
+            File hiddenFile = new File(workDir.get(), "hide_" + name);
+            if (!hiddenFile.exists()) {
+                boolean renamed = originalFile.renameTo(hiddenFile);
+                if (!renamed) {
+                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "Failed to rename: {0}", name);
+                }
+            } else {
+                System.out.println("A hidden file with the same name already exists.");
+                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "A hidden file with the name {0} already exists.", name);
+            }
+        } else {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", name);
+        }
     }
 
     /**

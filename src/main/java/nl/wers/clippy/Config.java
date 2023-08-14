@@ -54,7 +54,7 @@ public class Config {
     private Config(Clippy clippy) {
         this.clippyInstance = clippy;
         this.properties = new Properties();
-        this.configFile = new File(Clippy.HOME_DIRECTORY, CLIPPY_PROPERTIES);
+        this.configFile = new File(clippy.workDir.get().getParentFile(), CLIPPY_PROPERTIES);
 
         if (configFile.exists()) {
             loadProperties();
