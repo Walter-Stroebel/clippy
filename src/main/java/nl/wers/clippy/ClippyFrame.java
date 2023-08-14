@@ -143,7 +143,17 @@ public class ClippyFrame extends JFrame {
         toolBar.add(newGroupButton);
 
         getContentPane().add(toolBar, BorderLayout.NORTH);
-        addGroupTab("Sample Group", clippy);
+        File[] groups = clippy.workDir.get().getParentFile().listFiles();
+        if (null == groups) {
+            // at the very least an array with "default" should be returned.
+            Logger.getLogger(ClippyFrame.class.getName()).log(Level.SEVERE, "Logic error!");
+            System.exit(0);
+        }
+        for (File g : groups) {
+            if (g.isDirectory()) {
+                addGroupTab(g.getName(), clippy);
+            }
+        }
         // In your GUI initialization method, add the mouse listener to the parent container
         tabbedPane.addMouseListener(new ItemMouseListener(clippy, tabbedPane));
     }
@@ -158,19 +168,6 @@ public class ClippyFrame extends JFrame {
         // Save the maximized state to Config
         boolean isMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
         config.setProperty(Config.SECTIONS.GUI, "maximized", Boolean.toString(isMaximized));
-    }
-
-    private void handleSelection(Component comp) {
-        // TODO Your selection logic here
-        // For instance, if 'comp' is a JTextArea, you can get its text:
-        // String selectedText = ((JTextArea) comp).getText();
-    }
-
-    private void handleHide(Component comp) {
-        // TODO Your hide logic here
-        // For instance, if each component has a name corresponding to its underlying file:
-        // String filename = comp.getName();
-        // Rename the file with the 'hide_' prefix
     }
 
     private void addGroupTab(String groupName, Clippy clippy) {
