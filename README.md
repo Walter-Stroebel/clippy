@@ -47,5 +47,6 @@ Our developmental trajectory was an amalgamation of iterative decisions and cons
 4. **UML Fusion**: Envisaged the potential of UML in the developmental phase, leading to an integrated PlantUML.
 5. **User Interactions Augmented**: Leveraged JOptionPane for interactive sessions, enabling users to define filenames and select between PNG and ASCII for UML visualizations.
 6. **Refinement**: Incessantly refined the codebase to elevate its architecture and maintainability quotient.
+7. **Lobotomized**: 14 aug 2023, OpenAI deleted the functionality to rescan the current session and all but destroyed their previously amazing context buffer management. This project is on hold until this is corrected or I can find an alternative LLM.  
 
 Clippy stands as a paradigm of the prowess of collective efforts and evolutionary development, metamorphosing a nascent idea into an indispensable developer's companion.

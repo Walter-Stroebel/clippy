@@ -213,6 +213,7 @@ public class Clippy {
             combinedText.append(null == text ? "(null)" : text);
         }
         String finalText = combinedText.toString();
+        System.out.println("Sending "+finalText+" to clipboard");
         lastClipboardText.set(finalText);  // Set the lastClipboardText to avoid re-processing
 
         // Now, place the finalText on the clipboard
@@ -487,7 +488,8 @@ public class Clippy {
 
     }
 
-    private void handleCommand(String cmdString) {
+    private void handleCommand(final String cmdString) {
+        System.out.println("Executing " + cmdString);
         try {
             ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmdString.split(" ")));
             pb.redirectErrorStream(true);
@@ -498,23 +500,14 @@ public class Clippy {
             Thread outputThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    BufferedReader reader = null;
-                    try {
-                        reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    try ( BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             output.append(line).append("\n");
                         }
                     } catch (IOException e) {
                         Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
-                    } finally {
-                        if (reader != null) {
-                            try {
-                                reader.close();
-                            } catch (IOException e) {
-                                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
-                            }
-                        }
+                        placeOnClipboard("Your command ", cmdString, " caused exception ", e.getMessage());
                     }
                 }
             });
