@@ -213,7 +213,7 @@ public class Clippy {
             combinedText.append(null == text ? "(null)" : text);
         }
         String finalText = combinedText.toString();
-        System.out.println("Sending "+finalText+" to clipboard");
+        System.out.println("Sending " + finalText + " to clipboard");
         lastClipboardText.set(finalText);  // Set the lastClipboardText to avoid re-processing
 
         // Now, place the finalText on the clipboard
@@ -343,9 +343,9 @@ public class Clippy {
                                     int eoc = currentText.indexOf("@$", cmd);
                                     if (eoc > cmd + 2) {
                                         handleCommand(currentText.substring(cmd + 2, eoc));
-                                        currentText = new StringBuilder(currentText).delete(cmd, eoc).toString();
-                                        cmd = currentText.indexOf("$@");
+                                        currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
                                     }
+                                    cmd = currentText.indexOf("$@");
                                 }
                             } else {
                                 File outputFile = new File(workDir.get(), UUID.randomUUID().toString() + ".txt");
