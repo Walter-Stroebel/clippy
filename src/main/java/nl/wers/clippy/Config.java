@@ -96,8 +96,23 @@ public class Config {
         saveProperties();
     }
 
+    public boolean setCodeBase(File dir) {
+        return this.setCodeBase(dir.getAbsolutePath());
+    }
+
+    public boolean setCodeBase(String base) {
+        if (!new File(base).exists()) {
+            return false;
+        }
+        if (!new File(base, ".git").exists()) {
+            return false;
+        }
+        setProperty(SECTIONS.CODEBASE, "codebase", base);
+        return true;
+    }
+
     // Enum for property sections
     public enum SECTIONS {
-        GUI, PREFS
+        GUI, PREFS, CODEBASE
     }
 }
