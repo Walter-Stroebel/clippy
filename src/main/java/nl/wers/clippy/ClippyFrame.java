@@ -7,8 +7,12 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowStateListener;
 import java.io.File;
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
@@ -60,14 +64,49 @@ public class ClippyFrame extends JFrame {
      * @param clippy application instance.
      */
     private final JTabbedPane tabbedPane;
+    private Config config;
 
     public ClippyFrame(final Clippy clippy) {
         setTitle("Clippy");
 
-        // Set JFrame to fullscreen
+        // Initialize Config
+        config = Config.getInstance(clippy);
+
+        // Set JFrame based on saved properties or defaults
+        int x = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "x"));
+        int y = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "y"));
+        int width = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "width"));
+        int height = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "height"));
+        setBounds(x, y, width, height);
+
+        // Check if the window was maximized last session and set accordingly
+        boolean wasMaximized = Boolean.parseBoolean(config.getProperty(Config.SECTIONS.GUI, "maximized"));
+        if (wasMaximized) {
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+        }
+
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
+
         // Initialize JTabbedPane for groups
+        // Add listeners to update Config when the window is resized, moved or state changed
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateConfig();
+            }
+
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                updateConfig();
+            }
+        });
+
+        addWindowStateListener(new WindowStateListener() {
+            @Override
+            public void windowStateChanged(WindowEvent e) {
+                updateConfig();
+            }
+        });
         tabbedPane = new JTabbedPane();
         getContentPane().add(tabbedPane, BorderLayout.CENTER);
 
@@ -96,6 +135,18 @@ public class ClippyFrame extends JFrame {
         addGroupTab("Sample Group", clippy);
         // In your GUI initialization method, add the mouse listener to the parent container
         tabbedPane.addMouseListener(new ItemMouseListener(tabbedPane));
+    }
+
+    private void updateConfig() {
+        // Save the size and position to Config
+        config.setProperty(Config.SECTIONS.GUI, "x", Integer.toString(getX()));
+        config.setProperty(Config.SECTIONS.GUI, "y", Integer.toString(getY()));
+        config.setProperty(Config.SECTIONS.GUI, "width", Integer.toString(getWidth()));
+        config.setProperty(Config.SECTIONS.GUI, "height", Integer.toString(getHeight()));
+
+        // Save the maximized state to Config
+        boolean isMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
+        config.setProperty(Config.SECTIONS.GUI, "maximized", Boolean.toString(isMaximized));
     }
 
     private void handleSelection(Component comp) {
