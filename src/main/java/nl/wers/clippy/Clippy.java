@@ -84,8 +84,10 @@ public class Clippy {
     private static final int PORT = 25432;
 
     /**
-     * Initializes the Clippy system tray application. Checks for system tray
+     * Initializes the Clippy system tray application.Checks for system tray
      * support and sets up the tray icon and its functionalities.
+     *
+     * @param args not used.
      */
     public static void main(String[] args) {
         if (!SystemTray.isSupported()) {
@@ -173,6 +175,10 @@ public class Clippy {
             System.out.println("TrayIcon could not be added.");
         }
         initializeClipboardMonitor();
+    }
+
+    public File getCodeBase() {
+        return new File(Config.getInstance(this).getProperty(Config.SECTIONS.CODEBASE, Config.CODEBASE));
     }
 
     /**

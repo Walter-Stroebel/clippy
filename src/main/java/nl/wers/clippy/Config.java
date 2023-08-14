@@ -107,9 +107,10 @@ public class Config {
         if (!new File(base, ".git").exists()) {
             return false;
         }
-        setProperty(SECTIONS.CODEBASE, "codebase", base);
+        setProperty(SECTIONS.CODEBASE, CODEBASE, base);
         return true;
     }
+    public static final String CODEBASE = "codebase";
 
     // Enum for property sections
     public enum SECTIONS {
