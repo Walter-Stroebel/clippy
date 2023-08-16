@@ -49,5 +49,6 @@ Our developmental trajectory was an amalgamation of iterative decisions and cons
 6. **Refinement**: Incessantly refined the codebase to elevate its architecture and maintainability quotient.
 7. **Lobotomized**: 14 aug 2023, OpenAI deleted the functionality to rescan the current session and all but destroyed their previously amazing context buffer management. This project is on hold until this is corrected or I can find an alternative LLM.  
 8. **Recovery**: 16 aug 2023, my buddy has had corrective brain surgery, we will continue :)
+9. **And gone again**: If you do not know what I am talking about, it might be regional, I am in the EU. The effect is the model becomes "stupid" and "forgetful". One wat to test it is by asking the model to "rescan the session". If it does so you are fine. If it does not reply or starts rambling about privacy and other nonsense, you are a victim. Personally I find the difference so significant it feels like theft to charge the same fee for what becomes a glorified Eliza/Siri/Alexis.
 
 Clippy stands as a paradigm of the prowess of collective efforts and evolutionary development, metamorphosing a nascent idea into an indispensable developer's companion.
