@@ -107,10 +107,45 @@ public class Config {
         if (!new File(base, ".git").exists()) {
             return false;
         }
-        setProperty(SECTIONS.CODEBASE, CODEBASE, base);
+        setProperty(SECTIONS.CODEBASE, SECTIONS.CODEBASE.name(), base);
         return true;
     }
-    public static final String CODEBASE = "codebase";
+
+    public int getGuiX() {
+        return Integer.parseInt(properties.getProperty(SECTIONS.GUI.name() + ".x"));
+    }
+
+    public void setGuiX(int x) {
+        properties.setProperty(SECTIONS.GUI.name() + ".x", String.valueOf(x));
+        saveProperties();
+    }
+
+    public int getGuiY() {
+        return Integer.parseInt(properties.getProperty(SECTIONS.GUI.name() + ".y"));
+    }
+
+    public void setGuiY(int y) {
+        properties.setProperty(SECTIONS.GUI.name() + ".y", String.valueOf(y));
+        saveProperties();
+    }
+
+    public int getGuiWidth() {
+        return Integer.parseInt(properties.getProperty(SECTIONS.GUI.name() + ".width"));
+    }
+
+    public void setGuiWidth(int width) {
+        properties.setProperty(SECTIONS.GUI.name() + ".width", String.valueOf(width));
+        saveProperties();
+    }
+
+    public int getGuiHeight() {
+        return Integer.parseInt(properties.getProperty(SECTIONS.GUI.name() + ".height"));
+    }
+
+    public void setGuiHeight(int height) {
+        properties.setProperty(SECTIONS.GUI.name() + ".height", String.valueOf(height));
+        saveProperties();
+    }
 
     // Enum for property sections
     public enum SECTIONS {
