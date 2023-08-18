@@ -11,6 +11,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -21,7 +22,6 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
@@ -179,7 +179,32 @@ public class Clippy {
     }
 
     public File getCodeBase() {
-        return new File(Config.getInstance(this).getProperty(Config.SECTIONS.CODEBASE, Config.CODEBASE));
+        return new File(Config.getInstance(this).getProperty(Config.SECTIONS.CODEBASE, Config.SECTIONS.CODEBASE.name()));
+    }
+
+    /**
+     * Crude unique name generation.
+     * <p>
+     * Note: There's a slight risk of a race condition since this method isn't
+     * thread-safe.
+     *
+     * @param ext The file extension to use. While ".txt" or ".png" are
+     * expected, other extensions are also acceptable. A leading dot and
+     * lowercase are enforced.
+     * @return A sufficiently unique filename in the current working directory,
+     * also known as the clipping group.
+     */
+    private String generateUniqueFilename(String ext) {
+        long timestamp = System.currentTimeMillis();
+        String saveExt = ext.startsWith(".") ? ext.toLowerCase() : "." + ext.toLowerCase();
+        File file = new File(workDir.get(), timestamp + ext);
+
+        while (file.exists()) {
+            timestamp++;
+            file = new File(workDir.get(), timestamp + ext);
+        }
+
+        return file.getName();
     }
 
     /**
@@ -242,6 +267,13 @@ public class Clippy {
                                 receivedData.append(inputLine).append("\n");
                             }
                             latestData.set(receivedData.toString());
+
+                            // Save the received data to a file
+                            String filename = generateUniqueFilename(".txt");
+                            File outputFile = new File(workDir.get(), filename);
+                            try ( BufferedWriter out = new BufferedWriter(new FileWriter(outputFile))) {
+                                out.write(receivedData.toString());
+                            }
                         } catch (IOException ex) {
                             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
                         }
@@ -348,7 +380,7 @@ public class Clippy {
                                     cmd = currentText.indexOf("$@");
                                 }
                             } else {
-                                File outputFile = new File(workDir.get(), UUID.randomUUID().toString() + ".txt");
+                                File outputFile = new File(generateUniqueFilename(".txt"));
                                 // Save the current text to the new file
                                 try ( FileWriter writer = new FileWriter(outputFile)) {
                                     writer.write(currentText);
@@ -369,7 +401,7 @@ public class Clippy {
                         // Assuming a variable lastImageHash to store the last detected image hash
                         if (currentHash != lastImageHash) {
                             lastImageHash = currentHash;
-                            File imageFile = new File(workDir.get(), UUID.randomUUID().toString() + ".png");
+                            File imageFile = new File(generateUniqueFilename(".png"));
                             ImageIO.write(currentImage, "png", imageFile);
                         }
                     } catch (Exception ex) {
