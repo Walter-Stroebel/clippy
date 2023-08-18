@@ -178,10 +178,6 @@ public class Clippy {
         initializeClipboardMonitor();
     }
 
-    public File getCodeBase() {
-        return new File(Config.getInstance(this).getProperty(Config.SECTIONS.CODEBASE, Config.SECTIONS.CODEBASE.name()));
-    }
-
     /**
      * Crude unique name generation.
      * <p>

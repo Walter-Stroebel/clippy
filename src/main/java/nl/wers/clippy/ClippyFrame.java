@@ -83,14 +83,14 @@ public class ClippyFrame extends JFrame {
         config = Config.getInstance(clippy);
 
         // Set JFrame based on saved properties or defaults
-        int x = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "x"));
-        int y = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "y"));
-        int width = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "width"));
-        int height = Integer.parseInt(config.getProperty(Config.SECTIONS.GUI, "height"));
+        int x = config.getGuiX();
+        int y = config.getGuiY();
+        int width = config.getGuiWidth();
+        int height = config.getGuiHeight();
         setBounds(x, y, width, height);
         setAlwaysOnTop(true);
         // Check if the window was maximized last session and set accordingly
-        boolean wasMaximized = Boolean.parseBoolean(config.getProperty(Config.SECTIONS.GUI, "maximized"));
+        boolean wasMaximized = config.getMaximized();
         System.out.format("Showing GUI at %d,%d as %dx%d; max=%s\n", x, y, width, height, wasMaximized);
         if (wasMaximized) {
             setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -160,14 +160,14 @@ public class ClippyFrame extends JFrame {
 
     private void updateConfig() {
         // Save the size and position to Config
-        config.setProperty(Config.SECTIONS.GUI, "x", Integer.toString(getX()));
-        config.setProperty(Config.SECTIONS.GUI, "y", Integer.toString(getY()));
-        config.setProperty(Config.SECTIONS.GUI, "width", Integer.toString(getWidth()));
-        config.setProperty(Config.SECTIONS.GUI, "height", Integer.toString(getHeight()));
+        config.setGuiX(getX());
+        config.setGuiY(getY());
+        config.setGuiWidth(getWidth());
+        config.setGuiHeight(getHeight());
 
         // Save the maximized state to Config
         boolean isMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
-        config.setProperty(Config.SECTIONS.GUI, "maximized", Boolean.toString(isMaximized));
+        config.setMaximized(isMaximized);
     }
 
     private void addGroupTab(String groupName, Clippy clippy) {

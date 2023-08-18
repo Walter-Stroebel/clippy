@@ -100,6 +100,18 @@ public class Config {
         return this.setCodeBase(dir.getAbsolutePath());
     }
 
+    public File getCodeBase() {
+        return new File(getProperty(SECTIONS.CODEBASE, SECTIONS.CODEBASE.name()));
+    }
+
+    public boolean getMaximized() {
+        return getProperty(SECTIONS.GUI, "maximized").equals(Boolean.TRUE.toString());
+    }
+
+    public void setMaximized(boolean maxed) {
+        setProperty(SECTIONS.GUI, "maximized", Boolean.toString(maxed));
+    }
+
     public boolean setCodeBase(String base) {
         if (!new File(base).exists()) {
             return false;
