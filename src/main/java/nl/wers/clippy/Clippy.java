@@ -75,6 +75,22 @@ import javax.swing.Timer;
  */
 public class Clippy {
 
+    private static String usage = "## Clippy Utility Summary\n"
+            + "\n"
+            + "1. **Utility**: User operates a Java-based utility named \"Clippy\".\n"
+            + "2. **Functionality**: Clippy actively monitors the system clipboard for any copied text.\n"
+            + "3. **Command Execution**: \n"
+            + "   - Commands are encapsulated between `$@` and `@$`.\n"
+            + "   - When such a command is detected, Clippy processes it using Java's `ProcessBuilder`.\n"
+            + "   - Commands are executed within a specific directory (usually a Maven project root).\n"
+            + "   - The output of the command is captured and placed back on the clipboard for the user to paste.\n"
+            + "4. **Multiple Commands**: Multiple commands can be concatenated using a separator (`---CMD_OUTPUT_SEPARATOR---`).\n"
+            + "5. **Safety Measures**: \n"
+            + "   - Commands are only executed within directories under Git, limiting potential damage.\n"
+            + "   - User is aware of the risks and commits to verifying each command before allowing execution.\n"
+            + "   - An audit trail is maintained within Clippy.\n"
+            + "6. **Context Limitation**: Assistant has a token limit, which can be exceeded with verbose outputs or extensive code analysis.\n"
+            + "7. **User Interaction**: User can request the assistant to execute commands, view code, or make modifications, and then test them using Clippy.";
     /**
      * The home directory constant, pointing to the user's home directory.
      */
@@ -382,7 +398,7 @@ public class Clippy {
                                     }
                                 }
                             }
-                            if (null!=cat){
+                            if (null != cat) {
                                 placeOnClipboard(cat.toString());
                             }
                         }
