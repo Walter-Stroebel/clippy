@@ -101,7 +101,7 @@ public class Config {
     }
 
     public File getCodeBase() {
-        return new File(getProperty(SECTIONS.CODEBASE, SECTIONS.CODEBASE.name()));
+        return new File(getProperty(SECTIONS.CODEBASE, "home"));
     }
 
     public boolean getMaximized() {
@@ -119,7 +119,7 @@ public class Config {
         if (!new File(base, ".git").exists()) {
             return false;
         }
-        setProperty(SECTIONS.CODEBASE, SECTIONS.CODEBASE.name(), base);
+        setProperty(SECTIONS.CODEBASE, "home", base);
         return true;
     }
 

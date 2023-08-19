@@ -193,14 +193,14 @@ public class Clippy {
     private String generateUniqueFilename(String ext) {
         long timestamp = System.currentTimeMillis();
         String saveExt = ext.startsWith(".") ? ext.toLowerCase() : "." + ext.toLowerCase();
-        File file = new File(workDir.get(), timestamp + ext);
+        File file = new File(workDir.get(), timestamp + saveExt);
 
         while (file.exists()) {
             timestamp++;
-            file = new File(workDir.get(), timestamp + ext);
+            file = new File(workDir.get(), timestamp + saveExt);
         }
 
-        return file.getName();
+        return file.getAbsolutePath();
     }
 
     /**
@@ -234,7 +234,7 @@ public class Clippy {
             combinedText.append(null == text ? "(null)" : text);
         }
         String finalText = combinedText.toString();
-        System.out.println("Sending " + finalText + " to clipboard");
+        System.out.println("Sending [[" + finalText + "]] to clipboard");
         lastClipboardText.set(finalText);  // Set the lastClipboardText to avoid re-processing
 
         // Now, place the finalText on the clipboard
@@ -336,6 +336,10 @@ public class Clippy {
          */
         private final Clipboard clipboard;
 
+        private int lastImageHash;
+
+        private final String OUTPUT_SEPARATOR = "---CMD_OUTPUT_SEPARATOR---";
+
         /**
          * Constructor for the ClipboardMonitor class.
          *
@@ -344,7 +348,6 @@ public class Clippy {
         public ClipboardMonitor(Clipboard clipboard) {
             this.clipboard = clipboard;
         }
-        private int lastImageHash;
 
         /**
          * Checks the clipboard for changes in its content and handles them.
@@ -365,16 +368,6 @@ public class Clippy {
                             // Check for plantUML content
                             if (currentText.startsWith("@startuml")) {
                                 handlePlantUML(lastClipboardText.get());
-                            } else if (currentText.contains("$@")) {
-                                int cmd = currentText.indexOf("$@");
-                                while (cmd >= 0) {
-                                    int eoc = currentText.indexOf("@$", cmd);
-                                    if (eoc > cmd + 2) {
-                                        handleCommand(currentText.substring(cmd + 2, eoc));
-                                        currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
-                                    }
-                                    cmd = currentText.indexOf("$@");
-                                }
                             } else {
                                 File outputFile = new File(generateUniqueFilename(".txt"));
                                 // Save the current text to the new file
@@ -382,6 +375,17 @@ public class Clippy {
                                     writer.write(currentText);
                                 } catch (IOException ex) {
                                     Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+                                if (currentText.contains("$@")) {
+                                    int cmd = currentText.indexOf("$@");
+                                    while (cmd >= 0) {
+                                        int eoc = currentText.indexOf("@$", cmd);
+                                        if (eoc > cmd + 2) {
+                                            handleCommand(currentText.substring(cmd + 2, eoc));
+                                            currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
+                                        }
+                                        cmd = currentText.indexOf("$@");
+                                    }
                                 }
                             }
                         }
@@ -517,9 +521,10 @@ public class Clippy {
     }
 
     private void handleCommand(final String cmdString) {
-        System.out.println("Executing " + cmdString);
+        System.out.println("Executing " + cmdString + " in " + Config.getInstance(this).getCodeBase());
         try {
-            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmdString.split(" ")));
+            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmdString.trim().split(" ")));
+            pb.directory(Config.getInstance(this).getCodeBase());
             pb.redirectErrorStream(true);
             final Process process = pb.start();
 
