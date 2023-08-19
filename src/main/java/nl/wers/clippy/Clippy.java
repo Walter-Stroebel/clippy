@@ -113,6 +113,12 @@ public class Clippy {
      */
     final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
     private final ClippyFrame gui;
+    /**
+     * The system clipboard instance.
+     */
+    private final Clipboard clipboard;
+    private int lastImageHash;
+    private final String OUTPUT_SEPARATOR = "---CMD_OUTPUT_SEPARATOR---";
 
     /**
      * Constructor for the Clippy class. Initializes the GUI frame for the
@@ -120,6 +126,20 @@ public class Clippy {
      */
     public Clippy() {
         this.gui = new ClippyFrame(this);
+        clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        Timer timer = new Timer(1000, new ActionListener() {
+
+            /**
+             * Checks the clipboard for changes in its content and handles them.
+             *
+             * @param e The action event triggering this method.
+             */
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleClipboard();
+            }
+        });
+        timer.start();
     }
 
     /**
@@ -288,9 +308,6 @@ public class Clippy {
      * periodically.
      */
     private void initializeClipboardMonitor() {
-        final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        Timer timer = new Timer(1000, new ClipboardMonitor(clipboard));
-        timer.start();
     }
 
     void toClipboardItem(String name) {
@@ -325,199 +342,167 @@ public class Clippy {
         }
     }
 
-    /**
-     * Inner class responsible for monitoring the system clipboard for changes.
-     * It checks for both text and image content and handles them accordingly.
-     */
-    private class ClipboardMonitor implements ActionListener {
+    public void handleClipboard() {
+        Transferable contents = clipboard.getContents(null);
+        if (contents != null) {
+            // Handle text data
+            if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                try {
+                    String currentText = (String) contents.getTransferData(DataFlavor.stringFlavor);
+                    if (!currentText.equals(lastClipboardText.get())) {
+                        lastClipboardText.set(currentText);
 
-        /**
-         * The system clipboard instance.
-         */
-        private final Clipboard clipboard;
-
-        private int lastImageHash;
-
-        private final String OUTPUT_SEPARATOR = "---CMD_OUTPUT_SEPARATOR---";
-
-        /**
-         * Constructor for the ClipboardMonitor class.
-         *
-         * @param clipboard The system clipboard instance.
-         */
-        public ClipboardMonitor(Clipboard clipboard) {
-            this.clipboard = clipboard;
-        }
-
-        /**
-         * Checks the clipboard for changes in its content and handles them.
-         *
-         * @param e The action event triggering this method.
-         */
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            Transferable contents = clipboard.getContents(null);
-            if (contents != null) {
-                // Handle text data
-                if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-                    try {
-                        String currentText = (String) contents.getTransferData(DataFlavor.stringFlavor);
-                        if (!currentText.equals(lastClipboardText.get())) {
-                            lastClipboardText.set(currentText);
-
-                            // Check for plantUML content
-                            if (currentText.startsWith("@startuml")) {
-                                handlePlantUML(lastClipboardText.get());
-                            } else {
-                                File outputFile = new File(generateUniqueFilename(".txt"));
-                                // Save the current text to the new file
-                                try ( FileWriter writer = new FileWriter(outputFile)) {
-                                    writer.write(currentText);
-                                } catch (IOException ex) {
-                                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
-                                }
-                                if (currentText.contains("$@")) {
-                                    int cmd = currentText.indexOf("$@");
-                                    while (cmd >= 0) {
-                                        int eoc = currentText.indexOf("@$", cmd);
-                                        if (eoc > cmd + 2) {
-                                            handleCommand(currentText.substring(cmd + 2, eoc));
-                                            currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
-                                        }
-                                        cmd = currentText.indexOf("$@");
+                        // Check for plantUML content
+                        if (currentText.startsWith("@startuml")) {
+                            handlePlantUML(lastClipboardText.get());
+                        } else {
+                            File outputFile = new File(generateUniqueFilename(".txt"));
+                            // Save the current text to the new file
+                            try ( FileWriter writer = new FileWriter(outputFile)) {
+                                writer.write(currentText);
+                            } catch (IOException ex) {
+                                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                            }
+                            if (currentText.contains("$@")) {
+                                int cmd = currentText.indexOf("$@");
+                                while (cmd >= 0) {
+                                    int eoc = currentText.indexOf("@$", cmd);
+                                    if (eoc > cmd + 2) {
+                                        handleCommand(currentText.substring(cmd + 2, eoc));
+                                        currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
                                     }
+                                    cmd = currentText.indexOf("$@");
                                 }
                             }
                         }
-                    } catch (Exception ex) {
-                        Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
                     }
+                } catch (Exception ex) {
+                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                // Handle image data
-                if (contents.isDataFlavorSupported(DataFlavor.imageFlavor)) {
-                    try {
-                        BufferedImage currentImage = (BufferedImage) contents.getTransferData(DataFlavor.imageFlavor);
-                        int currentHash = getImageHash(currentImage);
-                        // Assuming a variable lastImageHash to store the last detected image hash
-                        if (currentHash != lastImageHash) {
-                            lastImageHash = currentHash;
-                            File imageFile = new File(generateUniqueFilename(".png"));
-                            ImageIO.write(currentImage, "png", imageFile);
-                        }
-                    } catch (Exception ex) {
-                        Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            // Handle image data
+            if (contents.isDataFlavorSupported(DataFlavor.imageFlavor)) {
+                try {
+                    BufferedImage currentImage = (BufferedImage) contents.getTransferData(DataFlavor.imageFlavor);
+                    int currentHash = getImageHash(currentImage);
+                    // Assuming a variable lastImageHash to store the last detected image hash
+                    if (currentHash != lastImageHash) {
+                        lastImageHash = currentHash;
+                        File imageFile = new File(generateUniqueFilename(".png"));
+                        ImageIO.write(currentImage, "png", imageFile);
                     }
+                } catch (Exception ex) {
+                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
+    }
 
-        /**
-         * Handles PlantUML content detected on the clipboard.
-         *
-         * @param currentText The detected PlantUML content.
-         */
-        private void handlePlantUML(String currentText) {
-            JTextField filenameField = new JTextField(15);
-            JPanel panel = new JPanel();
-            panel.add(new JLabel("Filename (without extension):"));
-            panel.add(filenameField);
+    /**
+     * Handles PlantUML content detected on the clipboard.
+     *
+     * @param currentText The detected PlantUML content.
+     */
+    private void handlePlantUML(String currentText) {
+        JTextField filenameField = new JTextField(15);
+        JPanel panel = new JPanel();
+        panel.add(new JLabel("Filename (without extension):"));
+        panel.add(filenameField);
 
-            Object[] options = {"PNG", "ASCII", "Cancel"};
-            int choice = JOptionPane.showOptionDialog(null, panel, "PlantUML", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        Object[] options = {"PNG", "ASCII", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(null, panel, "PlantUML", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 
-            // If "Cancel" is pressed or no filename is provided
-            if (choice == 2 || filenameField.getText().trim().isEmpty()) {
-                return;
-            }
-
-            String filename = filenameField.getText().trim();
-            String fullFilename = filename + ".txt";
-            File outputFile = new File(workDir.get(), fullFilename);
-
-            // Handle backups
-            if (outputFile.exists()) {
-                File backupFile = new File(workDir.get(), filename + ".bak");
-                backupFile.delete(); // Delete existing backup
-                outputFile.renameTo(backupFile); // Rename current file to backup
-            }
-
-            // Save the current text to the new file
-            try ( FileWriter writer = new FileWriter(outputFile)) {
-                writer.write(currentText);
-            } catch (IOException ex) {
-                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
-            }
-
-            String formatFlag = (choice == 1) ? "-ttxt" : "-tpng"; // Use -ttxt for ASCII, default to -tpng
-
-            // Run PlantUML
-            try {
-                ProcessBuilder pb = new ProcessBuilder("plantuml", formatFlag, outputFile.getAbsolutePath());
-                pb.directory(workDir.get());
-                Process process = pb.start();
-                process.waitFor();
-
-                if (choice == 1) {
-                    File asciiOutputFile = new File(workDir.get(), filename + ".atxt");
-                    String asciiContent = new String(Files.readAllBytes(asciiOutputFile.toPath()), StandardCharsets.UTF_8);
-                    placeOnClipboard(asciiContent);
-                } else {
-                    File pngOutputFile = new File(workDir.get(), filename + ".png");
-                    displayImage(pngOutputFile);
-                }
-
-            } catch (Exception e) {
-                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
-            }
+        // If "Cancel" is pressed or no filename is provided
+        if (choice == 2 || filenameField.getText().trim().isEmpty()) {
+            return;
         }
 
-        /**
-         * Displays an image in a JFrame.
-         *
-         * @param imageFile The file containing the image to display.
-         */
-        private void displayImage(File imageFile) {
-            JFrame frame = new JFrame("Generated UML Diagram");
-            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            frame.setSize(800, 600);  // Adjust size as needed
-            frame.setLocationRelativeTo(null);  // Center the frame
+        String filename = filenameField.getText().trim();
+        String fullFilename = filename + ".txt";
+        File outputFile = new File(workDir.get(), fullFilename);
 
-            ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
-            JLabel label = new JLabel(imageIcon);
-            JScrollPane scrollPane = new JScrollPane(label);
-            frame.add(scrollPane);
-
-            frame.setVisible(true);
+        // Handle backups
+        if (outputFile.exists()) {
+            File backupFile = new File(workDir.get(), filename + ".bak");
+            backupFile.delete(); // Delete existing backup
+            outputFile.renameTo(backupFile); // Rename current file to backup
         }
 
-        /**
-         * Resizes a given image to the specified width and height.
-         *
-         * @param originalImage The original image to resize.
-         * @param width The desired width.
-         * @param height The desired height.
-         * @return The resized image.
-         */
-        private BufferedImage resizeImage(BufferedImage originalImage, int width, int height) {
-            BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2d = resized.createGraphics();
-            g2d.drawImage(originalImage.getScaledInstance(width, height, Image.SCALE_SMOOTH), 0, 0, null);
-            g2d.dispose();
-            return resized;
+        // Save the current text to the new file
+        try ( FileWriter writer = new FileWriter(outputFile)) {
+            writer.write(currentText);
+        } catch (IOException ex) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        /**
-         * Computes a hash for the given image. This is used to detect changes
-         * in the image content.
-         *
-         * @param image The image to compute the hash for.
-         * @return The computed hash value.
-         */
-        private int getImageHash(BufferedImage image) {
-            BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
-            return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
-        }
+        String formatFlag = (choice == 1) ? "-ttxt" : "-tpng"; // Use -ttxt for ASCII, default to -tpng
 
+        // Run PlantUML
+        try {
+            ProcessBuilder pb = new ProcessBuilder("plantuml", formatFlag, outputFile.getAbsolutePath());
+            pb.directory(workDir.get());
+            Process process = pb.start();
+            process.waitFor();
+
+            if (choice == 1) {
+                File asciiOutputFile = new File(workDir.get(), filename + ".atxt");
+                String asciiContent = new String(Files.readAllBytes(asciiOutputFile.toPath()), StandardCharsets.UTF_8);
+                placeOnClipboard(asciiContent);
+            } else {
+                File pngOutputFile = new File(workDir.get(), filename + ".png");
+                displayImage(pngOutputFile);
+            }
+
+        } catch (Exception e) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
+
+    /**
+     * Displays an image in a JFrame.
+     *
+     * @param imageFile The file containing the image to display.
+     */
+    private void displayImage(File imageFile) {
+        JFrame frame = new JFrame("Generated UML Diagram");
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.setSize(800, 600);  // Adjust size as needed
+        frame.setLocationRelativeTo(null);  // Center the frame
+
+        ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
+        JLabel label = new JLabel(imageIcon);
+        JScrollPane scrollPane = new JScrollPane(label);
+        frame.add(scrollPane);
+
+        frame.setVisible(true);
+    }
+
+    /**
+     * Resizes a given image to the specified width and height.
+     *
+     * @param originalImage The original image to resize.
+     * @param width The desired width.
+     * @param height The desired height.
+     * @return The resized image.
+     */
+    private BufferedImage resizeImage(BufferedImage originalImage, int width, int height) {
+        BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = resized.createGraphics();
+        g2d.drawImage(originalImage.getScaledInstance(width, height, Image.SCALE_SMOOTH), 0, 0, null);
+        g2d.dispose();
+        return resized;
+    }
+
+    /**
+     * Computes a hash for the given image. This is used to detect changes in
+     * the image content.
+     *
+     * @param image The image to compute the hash for.
+     * @return The computed hash value.
+     */
+    private int getImageHash(BufferedImage image) {
+        BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
+        return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
     }
 
     private void handleCommand(final String cmdString) {
