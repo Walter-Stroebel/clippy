@@ -106,7 +106,7 @@ public class Clippy {
     /**
      * Holds the last text content detected on the clipboard.
      */
-    final AtomicReference<String> lastClipboardText = new AtomicReference<>();
+    final AtomicReference<String> lastClipboardText = new AtomicReference<>(null);
 
     /**
      * Represents the current working directory for the application.
@@ -118,7 +118,7 @@ public class Clippy {
      */
     private final Clipboard clipboard;
     private int lastImageHash;
-    private final String OUTPUT_SEPARATOR = "---CMD_OUTPUT_SEPARATOR---";
+    private final String OUTPUT_SEPARATOR = "\n---CMD_OUTPUT_SEPARATOR---\n";
 
     /**
      * Constructor for the Clippy class. Initializes the GUI frame for the
@@ -349,7 +349,10 @@ public class Clippy {
             if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
                 try {
                     String currentText = (String) contents.getTransferData(DataFlavor.stringFlavor);
-                    if (!currentText.equals(lastClipboardText.get())) {
+                    // ignore context on clipboard on start-up as that can be really weird and unexpected
+                    if (null == lastClipboardText.get()) {
+                        lastClipboardText.set(currentText);
+                    } else if (!currentText.equals(lastClipboardText.get())) {
                         lastClipboardText.set(currentText);
 
                         // Check for plantUML content
@@ -363,16 +366,24 @@ public class Clippy {
                             } catch (IOException ex) {
                                 Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
                             }
-                            if (currentText.contains("$@")) {
+                            StringBuilder cat = null;
+                            while (currentText.contains("$@")) {
                                 int cmd = currentText.indexOf("$@");
-                                while (cmd >= 0) {
+                                if (cmd >= 0) {
                                     int eoc = currentText.indexOf("@$", cmd);
                                     if (eoc > cmd + 2) {
-                                        handleCommand(currentText.substring(cmd + 2, eoc));
+                                        if (null == cat) {
+                                            cat = new StringBuilder();
+                                        } else {
+                                            cat.append(OUTPUT_SEPARATOR);
+                                        }
+                                        cat.append(handleCommand(currentText.substring(cmd + 2, eoc)));
                                         currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
                                     }
-                                    cmd = currentText.indexOf("$@");
                                 }
+                            }
+                            if (null!=cat){
+                                placeOnClipboard(cat.toString());
                             }
                         }
                     }
@@ -505,16 +516,16 @@ public class Clippy {
         return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
     }
 
-    private void handleCommand(final String cmdString) {
+    private String handleCommand(final String cmdString) {
         System.out.println("Executing " + cmdString + " in " + Config.getInstance(this).getCodeBase());
+        // To capture output
+        final StringBuilder output = new StringBuilder();
         try {
             ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmdString.trim().split(" ")));
             pb.directory(Config.getInstance(this).getCodeBase());
             pb.redirectErrorStream(true);
             final Process process = pb.start();
 
-            // To capture output
-            final StringBuilder output = new StringBuilder();
             Thread outputThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -525,7 +536,7 @@ public class Clippy {
                         }
                     } catch (IOException e) {
                         Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
-                        placeOnClipboard("Your command ", cmdString, " caused exception ", e.getMessage());
+                        output.append("\nYour command ").append(cmdString).append(" caused exception ").append(e.getMessage());
                     }
                 }
             });
@@ -533,15 +544,15 @@ public class Clippy {
 
             if (process.waitFor(10, TimeUnit.SECONDS)) {
                 outputThread.join(); // Wait for the output reading thread to finish
-                placeOnClipboard(output.toString());
             } else {
                 process.destroy();
-                placeOnClipboard("Your command ", cmdString, " timed out");
+                output.append("\nYour command ").append(cmdString).append(" timed out");
             }
         } catch (Exception ex) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
-            placeOnClipboard("Your command ", cmdString, " caused exception ", ex.getMessage());
+            output.append("\nYour command ").append(cmdString).append(" caused exception ").append(ex.getMessage());
         }
+        return output.toString();
     }
 
 }
