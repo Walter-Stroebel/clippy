@@ -1,0 +1,32 @@
+How to Make ChatGPT Talk the Way You Want: Easy Steps
+
+Why Do This?
+ChatGPT can adjust its responses to match your chatting style. While it can remember your preferences during a single chat, it needs a reminder at the start of each new session. This reminder is called a "prompt." This guide will help you create a prompt so ChatGPT can chat just the way you prefer.
+
+1. Start Chatting
+
+Talk to ChatGPT about anything you like. It could be about a book, a movie, or any fun topic.
+2. Tell ChatGPT What You Like
+
+If ChatGPT says something you don't prefer, let it know. For example, if you want shorter answers or wish to skip some topics, just say so.
+3. Make a List of Your Likes
+
+After chatting for a while, ask ChatGPT to make a list of what you talked about. This helps ChatGPT remember how you like to chat.
+4. Use Your List Next Time
+
+The next time you chat, show ChatGPT your list. It'll help guide the conversation the way you like.
+Helpful Hints:
+
+Be Clear: The more direct you are about what you like, the better ChatGPT can chat with you.
+Try Again: You can make a new list anytime to improve your chats.
+Stay Curious: Exploring different topics can make your chats more fun.
+Ask Questions: If something's unclear, just ask. ChatGPT is here to help.
+The Recursive Step: Using This Tutorial as Your Prompt
+After you've had a good chat with ChatGPT:
+
+Paste this entire tutorial at the end of your chat.
+Simply ask, "Can you generate a prompt for me based on our chat?"
+ChatGPT should then provide you with a personalized prompt, presented as a code block for easy copying.
+By doing this, you're giving ChatGPT a comprehensive guide on how you like to chat, and it will generate a perfect prompt tailored just for you!
+
+
