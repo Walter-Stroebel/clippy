@@ -75,7 +75,7 @@ import javax.swing.Timer;
  */
 public class Clippy {
 
-    private static String usage = "## Clippy Utility Summary\n"
+    private static final String usage = "## Clippy Utility Summary\n"
             + "\n"
             + "1. **Utility**: User operates a Java-based utility named \"Clippy\".\n"
             + "2. **Functionality**: Clippy actively monitors the system clipboard for any copied text.\n"
