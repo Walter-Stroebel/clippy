@@ -340,24 +340,6 @@ public class Clippy {
         }
     }
 
-    void hideItem(String name) {
-        File originalFile = new File(workDir.get(), name);
-        if (originalFile.exists() && originalFile.isFile()) {
-            File hiddenFile = new File(workDir.get(), "hide_" + name);
-            if (!hiddenFile.exists()) {
-                boolean renamed = originalFile.renameTo(hiddenFile);
-                if (!renamed) {
-                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "Failed to rename: {0}", name);
-                }
-            } else {
-                System.out.println("A hidden file with the same name already exists.");
-                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "A hidden file with the name {0} already exists.", name);
-            }
-        } else {
-            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", name);
-        }
-    }
-
     public void handleClipboard() {
         Transferable contents = clipboard.getContents(null);
         if (contents != null) {
@@ -402,9 +384,10 @@ public class Clippy {
                                 placeOnClipboard(cat.toString());
                             }
                         }
+                        gui.refreshGroupTab(workDir.get());
                     }
                 } catch (Exception ex) {
-                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                    // this happens often "Caused by: java.io.IOException: Owner failed to convert data", just ignore
                 }
             }
             // Handle image data

@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -217,6 +218,15 @@ public class ClippyFrame extends JFrame {
         return String.format("%1$tF %1$tT", ft);
     }
     
+    public void refreshGroupTab(File group) {
+        int index = tabbedPane.indexOfTab(group.getName());
+        if (index != -1) {
+            tabbedPane.remove(index);
+        }
+        addGroupTab(group);
+        tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
+    }
+    
     private void addGroupTab(File g) {
         Box groupPanel = Box.createVerticalBox();
         JScrollPane sPane = new JScrollPane(groupPanel);
@@ -228,7 +238,8 @@ public class ClippyFrame extends JFrame {
                 public int compare(File t, File t1) {
                     long ft1 = fileToTimestamp(t);
                     long ft2 = fileToTimestamp(t1);
-                    return Long.compare(ft1, ft2);
+                    // reverse sort by age
+                    return -Long.compare(ft1, ft2);
                 }
             });
             ButtonGroup bGrp = new ButtonGroup();
@@ -284,6 +295,7 @@ public class ClippyFrame extends JFrame {
                 line.add(Box.createHorizontalGlue());
                 groupPanel.add(line);
             }
+            sPane.getViewport().setViewPosition(new Point());
         }
     }
 
