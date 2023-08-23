@@ -3,34 +3,41 @@
 package nl.wers.clippy;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Container;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
+import javax.swing.Box;
+import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.JToolBar;
-import javax.swing.SwingUtilities;
+import javax.swing.SwingConstants;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 /**
  * ClippyFrame represents the main GUI for the Clippy application, providing an
@@ -70,6 +77,10 @@ import javax.swing.SwingUtilities;
  * @author Walter Stroebel
  */
 public class ClippyFrame extends JFrame {
+    
+    private static final int TNAIL_SIZE = 200;
+    private static final String VIEW = "View";
+    public static final int TPREV_SIZE = 200;
 
     /**
      * Initialize the GUI.
@@ -78,7 +89,8 @@ public class ClippyFrame extends JFrame {
      */
     private final JTabbedPane tabbedPane;
     private Config config;
-
+    private File selectedFile = null;
+    
     public ClippyFrame(final Clippy clippy) {
         setTitle("Clippy");
 
@@ -98,7 +110,7 @@ public class ClippyFrame extends JFrame {
         if (wasMaximized) {
             setExtendedState(JFrame.MAXIMIZED_BOTH);
         }
-
+        
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 
         // Initialize JTabbedPane for groups
@@ -108,13 +120,13 @@ public class ClippyFrame extends JFrame {
             public void componentResized(ComponentEvent e) {
                 updateConfig();
             }
-
+            
             @Override
             public void componentMoved(ComponentEvent e) {
                 updateConfig();
             }
         });
-
+        
         addWindowStateListener(new WindowStateListener() {
             @Override
             public void windowStateChanged(WindowEvent e) {
@@ -132,8 +144,8 @@ public class ClippyFrame extends JFrame {
         groupNameField.setPreferredSize(fixedSize);
         groupNameField.setMaximumSize(fixedSize);
         toolBar.add(groupNameField);
-
-        JButton newGroupButton = new JButton(new AbstractAction("New Group") {
+        
+        toolBar.add(new JButton(new AbstractAction("New Group") {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 String groupName = groupNameField.getText().trim();
@@ -142,9 +154,14 @@ public class ClippyFrame extends JFrame {
                     groupNameField.setText(""); // Clear the input field
                 }
             }
-        });
-        toolBar.add(newGroupButton);
-
+        }));
+        toolBar.addSeparator();
+        toolBar.add(new JButton(new AbstractAction("Preview") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                // TODO
+            }
+        }));
         getContentPane().add(toolBar, BorderLayout.NORTH);
         File[] groups = clippy.workDir.get().getParentFile().listFiles();
         if (null == groups) {
@@ -154,13 +171,22 @@ public class ClippyFrame extends JFrame {
         }
         for (File g : groups) {
             if (g.isDirectory()) {
-                addGroupTab(g.getName(), clippy);
+                addGroupTab(g);
             }
         }
-        // In your GUI initialization method, add the mouse listener to the parent container
-        tabbedPane.addMouseListener(new ItemMouseListener(clippy, tabbedPane));
+        tabbedPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent ce) {
+                JTabbedPane sourceTabbedPane = (JTabbedPane) ce.getSource();
+                int selectedIndex = sourceTabbedPane.getSelectedIndex();
+                String title = sourceTabbedPane.getTitleAt(selectedIndex);
+                if (!title.equals(VIEW)) {
+                    clippy.workDir.set(new File(clippy.workDir.get().getParentFile(), title));
+                }
+            }
+        });
     }
-
+    
     private void updateConfig() {
         // Save the size and position to Config
         config.setGuiX(getX());
@@ -172,68 +198,127 @@ public class ClippyFrame extends JFrame {
         boolean isMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
         config.setMaximized(isMaximized);
     }
-
-    private void addGroupTab(String groupName, Clippy clippy) {
-        JPanel groupPanel = new JPanel(new BorderLayout());
-
-        // Inner JToolBar for the group
-        JToolBar groupToolBar = new JToolBar();
-        JButton copyButton = new JButton(new AbstractAction("Copy") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                // TODO copy the selected item, if any, to the clipboard.
-            }
-        });
-        groupToolBar.add(copyButton);
-        groupPanel.add(groupToolBar, BorderLayout.NORTH);
-
-        // Initialize the content preview panel for the group
-        JPanel contentPreviewPanel = new JPanel();
-        populateContentPreviewPanel(contentPreviewPanel, new File(clippy.workDir.get(), groupName)); // Populate the panel with previews
-        groupPanel.add(contentPreviewPanel, BorderLayout.CENTER);
-
-        tabbedPane.addTab(groupName, groupPanel);
+    
+    private long fileToTimestamp(File t) {
+        long ft1;
+        try {
+            String s = t.getName();
+            s = s.substring(0, s.indexOf('.'));
+            ft1 = Long.parseLong(s);
+        } catch (Exception any) {
+            // it is not a timestamp
+            ft1 = t.lastModified();
+        }
+        return ft1;
     }
-
-    /**
-     * Populates the given panel with previews of clipboard items from the
-     * specified directory.
-     *
-     * @param panel The panel to populate.
-     * @param groupDir The directory containing the clipboard items.
-     */
-    private void populateContentPreviewPanel(JPanel panel, File groupDir) {
-        File[] files = groupDir.listFiles();
+    
+    private String bestFileToTimeLabel(File t) {
+        long ft = fileToTimestamp(t);
+        return String.format("%1$tF %1$tT", ft);
+    }
+    
+    private void addGroupTab(File g) {
+        Box groupPanel = Box.createVerticalBox();
+        JScrollPane sPane = new JScrollPane(groupPanel);
+        tabbedPane.addTab(g.getName(), sPane);
+        File[] files = g.listFiles();
         if (files != null) {
-            for (File file : files) {
-                // Skip hidden files
-                if (file.getName().startsWith("hide_")) {
-                    continue;
+            Arrays.sort(files, new Comparator<File>() {
+                @Override
+                public int compare(File t, File t1) {
+                    long ft1 = fileToTimestamp(t);
+                    long ft2 = fileToTimestamp(t1);
+                    return Long.compare(ft1, ft2);
                 }
-
+            });
+            ButtonGroup bGrp = new ButtonGroup();
+            for (File file : files) {
+                if (groupPanel.getComponentCount() > 0) {
+                    groupPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
+                }
+                Box line = Box.createHorizontalBox();
+                JToggleButton bt = new JToggleButton(new AbstractAction(bestFileToTimeLabel(file)) {
+                    @Override
+                    public void actionPerformed(ActionEvent ae) {
+                        Object source = ae.getSource();
+                        if (source instanceof JToggleButton) {
+                            JToggleButton bt = (JToggleButton) source;
+                            if (bt.isSelected()) {
+                                selectedFile = new File(bt.getName());
+                                if (!selectedFile.exists()) {
+                                    selectedFile = null;
+                                } else {
+                                    if (selectedFile.getName().endsWith(".png")) {
+                                        tabbedPane.add(VIEW, new ImageViewer(selectedFile).getViewPanel());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                bt.setName(file.getAbsolutePath());
+                bGrp.add(bt);
+                line.add(bt);
                 // Handling PNG files
                 if (file.getName().toLowerCase().endsWith(".png")) {
                     ImageIcon icon = new ImageIcon(file.getAbsolutePath()); // Load the image
-                    Image img = icon.getImage().getScaledInstance(100, 100, Image.SCALE_FAST); // Create a thumbnail of fixed size, say 100x100
-                    JLabel imgLabel = new JLabel(new ImageIcon(img));
+                    JLabel imgLabel = new JLabel(bestFileToTimeLabel(file),
+                            new ImageIcon(scaleMax(icon.getImage(), TNAIL_SIZE, TNAIL_SIZE, Color.darkGray)),
+                            SwingConstants.HORIZONTAL);
                     imgLabel.setName(file.getName()); // Set file name as the component name for later retrieval
-                    panel.add(imgLabel);
+                    line.add(imgLabel);
                 } else { // Handling text files
                     try {
                         String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-                        if (content.length() > 500) { // Truncate after 500 characters for display purposes
-                            content = content.substring(0, 500) + "...";
+                        if (content.length() > 500) { // Truncate after X characters for display purposes
+                            content = content.substring(0, TPREV_SIZE) + "...";
                         }
                         JTextArea textArea = new JTextArea(content);
                         textArea.setEditable(false);
                         textArea.setName(file.getName()); // Set file name as the component name for later retrieval
-                        panel.add(textArea);
+                        line.add(textArea);
                     } catch (IOException ex) {
                         Logger.getLogger(ClippyFrame.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
+                line.add(Box.createHorizontalGlue());
+                groupPanel.add(line);
             }
         }
+    }
+
+    /**
+     * Scale this image keeping ratio to maximum width or height. This assumes
+     * the output should fit in a rectangle and returns the "biggest" image
+     * possible on a canvas filled with the background color.
+     *
+     * @param nw The maximum width or height.
+     * @param nh The maximum height.
+     * @param backGround If the resulting image is smaller then the requested
+     * size, center it on a canvas filled with this color.
+     * @return Scaled image.
+     */
+    public BufferedImage scaleMax(Image image, int nw, int nh, Color backGround) {
+        int rw = nw;
+        int rh = nh;
+        double wr = (double) getWidth() / (double) rw;
+        double hr = (double) getHeight() / (double) rh;
+        if (wr > hr) {
+            rh = (int) Math.round(getHeight() / wr);
+        } else {
+            rw = (int) Math.round(getWidth() / hr);
+        }
+        ImageIcon ii = new ImageIcon(image.getScaledInstance(rw, rh, Image.SCALE_FAST));
+        
+        BufferedImage ret = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D gr = ret.createGraphics();
+        gr.setColor(backGround);
+        gr.fillRect(0, 0, nw, nh);
+        int x = (nw - rw) / 2;
+        int y = (nh - rh) / 2;
+        gr.drawImage(ii.getImage(), x, y, null);
+        gr.dispose();
+        return ret;
     }
 
     /**
@@ -245,32 +330,5 @@ public class ClippyFrame extends JFrame {
             newGroupDir.mkdir();
         }
         clippy.workDir.set(newGroupDir);
-    }
-
-    private class ItemMouseListener extends MouseAdapter {
-
-        private final Container cont;
-        private final Clippy clippy;
-
-        public ItemMouseListener(Clippy clippy, Container cont) {
-            this.clippy = clippy;
-            this.cont = cont;
-        }
-
-        @Override
-        public void mouseClicked(MouseEvent e) {
-            // Iterate over all components in the parent container
-            for (Component comp : cont.getComponents()) { // Assuming 'centerPanel' is the parent container
-                if (comp.getBounds().contains(e.getPoint())) {
-                    // Handle left-click
-                    if (SwingUtilities.isLeftMouseButton(e)) {
-                        clippy.toClipboardItem(comp.getName());
-                    } else if (SwingUtilities.isRightMouseButton(e)) {
-                        clippy.hideItem(comp.getName());
-                    }
-                    break; // Exit loop once the clicked component is found
-                }
-            }
-        }
     }
 }
