@@ -1,65 +1,30 @@
 @startuml
 
-skinparam class {
-    BackgroundColor<<note>> Wheat
-    BorderColor<<note>> Wheat
+class Clippy {
+    +main(args: String[]): void
+    +Clippy(): void
+    +loadImage(imageName: String): BufferedImage
+    +showImage(image: BufferedImage): void
 }
 
-package "Clippy Application" {
-
-    class Clippy {
-        +HOME_DIRECTORY: File
-        +PORT: int
-        -latestData: AtomicReference<String>
-        -lastClipboardText: AtomicReference<String>
-        -workDir: AtomicReference<File>
-        --
-        +main(args: String[]): void
-        +Clippy()
-        -init(): void
-        -initializeWorkDir(): File
-        -placeOnClipboard(texts: String...): void
-        -initializeServerSocket(): void
-        -initializeClipboardMonitor(): void
-        +createNewGroup(): void
-        +selectExistingGroup(): void
-    }
-
-    class ClipboardMonitor {
-        -clipboard: Clipboard
-        -lastImageHash: int
-        --
-        +ClipboardMonitor(clipboard: Clipboard)
-        +actionPerformed(e: ActionEvent): void
-        -handlePlantUML(currentText: String): void
-        -displayImage(imageFile: File): void
-        -resizeImage(originalImage: BufferedImage, width: int, height: int): BufferedImage
-        -getImageHash(image: BufferedImage): int
-    }
-
-    class ClippyFrame {
-        --
-        +ClippyFrame(clippy: Clippy)
-    }
-
-    Clippy *-- ClipboardMonitor : contains >
-    Clippy *-- ClippyFrame : has >
-
-    note as N1
-    The Clippy class initializes and manages
-    the system tray application, handling clipboard
-    and server socket functionalities.
-    end note
-
-    note as N2
-    The ClipboardMonitor class monitors the
-    system clipboard for changes, handling both
-    text and image content accordingly.
-    end note
-
-    Clippy .. N1
-    ClipboardMonitor .. N2
-
+class ClippyFrame {
+    +ClippyFrame(): void
+    +showImage(image: BufferedImage): void
 }
+
+class Config {
+    +Config(): void
+    +load(): void
+    +save(): void
+}
+
+class ImageViewer {
+    +ImageViewer(): void
+    +showImage(image: BufferedImage): void
+}
+
+Clippy --> ClippyFrame
+Clippy --> Config
+Clippy --> ImageViewer
 
 @enduml
