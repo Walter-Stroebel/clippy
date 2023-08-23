@@ -80,7 +80,7 @@ import javax.swing.event.ChangeListener;
  * @author Walter Stroebel
  */
 public class ClippyFrame extends JFrame {
-    
+
     private static final int TNAIL_SIZE = 200;
     private static final String VIEW = "View";
     public static final int TPREV_SIZE = 200;
@@ -91,9 +91,10 @@ public class ClippyFrame extends JFrame {
      * @param clippy application instance.
      */
     private final JTabbedPane tabbedPane;
-    private Config config;
+    private final Config config;
     private File selectedFile = null;
-    
+    private final JButton itemToCB;
+
     public ClippyFrame(final Clippy clippy) {
         setTitle("Clippy");
 
@@ -113,7 +114,7 @@ public class ClippyFrame extends JFrame {
         if (wasMaximized) {
             setExtendedState(JFrame.MAXIMIZED_BOTH);
         }
-        
+
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 
         // Initialize JTabbedPane for groups
@@ -123,13 +124,13 @@ public class ClippyFrame extends JFrame {
             public void componentResized(ComponentEvent e) {
                 updateConfig();
             }
-            
+
             @Override
             public void componentMoved(ComponentEvent e) {
                 updateConfig();
             }
         });
-        
+
         addWindowStateListener(new WindowStateListener() {
             @Override
             public void windowStateChanged(WindowEvent e) {
@@ -148,7 +149,7 @@ public class ClippyFrame extends JFrame {
         groupNameField.setPreferredSize(fixedSize);
         groupNameField.setMaximumSize(fixedSize);
         toolBar.add(groupNameField);
-        
+
         toolBar.add(new JButton(new AbstractAction("New Group") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -160,14 +161,16 @@ public class ClippyFrame extends JFrame {
             }
         }));
         toolBar.addSeparator();
-        toolBar.add(new JButton(new AbstractAction("Item -> CB") {
+        itemToCB = new JButton(new AbstractAction("Item -> CB") {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 if (null != selectedFile && selectedFile.exists()) {
                     clippy.toClipboardItem(selectedFile);
                 }
             }
-        }));
+        });
+        itemToCB.setEnabled(false);
+        toolBar.add(itemToCB);
         toolBar.addSeparator();
         toolBar.add(new JButton(new AbstractAction("Delete group") {
             @Override
@@ -216,7 +219,7 @@ public class ClippyFrame extends JFrame {
             }
         });
     }
-    
+
     private void updateConfig() {
         // Save the size and position to Config
         config.setGuiX(getX());
@@ -228,7 +231,7 @@ public class ClippyFrame extends JFrame {
         boolean isMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
         config.setMaximized(isMaximized);
     }
-    
+
     private long fileToTimestamp(File t) {
         long ft1;
         try {
@@ -241,12 +244,12 @@ public class ClippyFrame extends JFrame {
         }
         return ft1;
     }
-    
+
     private String bestFileToTimeLabel(File t) {
         long ft = fileToTimestamp(t);
         return String.format("%1$tF %1$tT", ft);
     }
-    
+
     public final void refreshGroupTab(File group) {
         int index = tabbedPane.indexOfTab(group.getName());
         if (index != -1) {
@@ -255,7 +258,7 @@ public class ClippyFrame extends JFrame {
         addGroupTab(group);
         tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
     }
-    
+
     private void addGroupTab(File g) {
         Box groupPanel = Box.createVerticalBox();
         JScrollPane sPane = new JScrollPane(groupPanel);
@@ -284,12 +287,32 @@ public class ClippyFrame extends JFrame {
                         if (source instanceof JToggleButton) {
                             JToggleButton bt = (JToggleButton) source;
                             if (bt.isSelected()) {
+                                for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
+                                    if (tabbedPane.getTitleAt(i).equals(VIEW)) {
+                                        tabbedPane.remove(i);
+                                        break;
+                                    }
+                                }
                                 selectedFile = new File(bt.getName());
                                 if (!selectedFile.exists()) {
                                     selectedFile = null;
+                                    itemToCB.setEnabled(false);
                                 } else {
                                     if (selectedFile.getName().endsWith(".png")) {
+                                        itemToCB.setEnabled(false);
                                         tabbedPane.add(VIEW, new ImageViewer(selectedFile).getViewPanel());
+                                        tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
+                                    } else {
+                                        itemToCB.setEnabled(true);
+                                        try {
+                                            String content = new String(Files.readAllBytes(selectedFile.toPath()), StandardCharsets.UTF_8);
+                                            JTextArea ta = new JTextArea();
+                                            ta.setText(content);
+                                            tabbedPane.add(VIEW, new JScrollPane(ta));
+                                            tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
+                                        } catch (IOException ex) {
+                                            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                                        }
                                     }
                                 }
                             }
@@ -329,10 +352,11 @@ public class ClippyFrame extends JFrame {
     }
 
     /**
-     * Scale this image keeping ratio to maximum width or height. This assumes
+     * Scale this image keeping ratio to maximum width or height.This assumes
      * the output should fit in a rectangle and returns the "biggest" image
      * possible on a canvas filled with the background color.
      *
+     * @param image Image to scale.
      * @param nw The maximum width or height.
      * @param nh The maximum height.
      * @param backGround If the resulting image is smaller then the requested
@@ -350,7 +374,7 @@ public class ClippyFrame extends JFrame {
             rw = (int) Math.round(getWidth() / hr);
         }
         ImageIcon ii = new ImageIcon(image.getScaledInstance(rw, rh, Image.SCALE_FAST));
-        
+
         BufferedImage ret = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_ARGB);
         Graphics2D gr = ret.createGraphics();
         gr.setColor(backGround);
