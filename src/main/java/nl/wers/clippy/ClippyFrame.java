@@ -27,8 +27,10 @@ import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
@@ -141,6 +143,7 @@ public class ClippyFrame extends JFrame {
         JToolBar toolBar = new JToolBar();
         // Input field for new group name
         final JTextField groupNameField = new JTextField(15); // 15 columns wide
+        final JCheckBox iAmSure = new JCheckBox("Sure?");
         Dimension fixedSize = new Dimension(200, 25); // Example dimensions
         groupNameField.setPreferredSize(fixedSize);
         groupNameField.setMaximumSize(fixedSize);
@@ -157,12 +160,37 @@ public class ClippyFrame extends JFrame {
             }
         }));
         toolBar.addSeparator();
-        toolBar.add(new JButton(new AbstractAction("Preview") {
+        toolBar.add(new JButton(new AbstractAction("Item -> CB") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                // TODO
+                if (null != selectedFile && selectedFile.exists()) {
+                    clippy.toClipboardItem(selectedFile);
+                }
             }
         }));
+        toolBar.addSeparator();
+        toolBar.add(new JButton(new AbstractAction("Delete group") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                if (!iAmSure.isSelected()) {
+                    JOptionPane.showMessageDialog(ClippyFrame.this, "You are not sure.");
+                } else {
+                    iAmSure.setSelected(false);
+                    File[] all = clippy.workDir.get().listFiles();
+                    if (null != all) {
+                        for (File f : all) {
+                            f.delete();
+                        }
+                    }
+                    if (!clippy.workDir.get().getName().equals(Clippy.DEFAULT_GROUP)) {
+                        clippy.workDir.get().delete();
+                        tabbedPane.remove(tabbedPane.getSelectedIndex());
+                        refreshGroupTab(new File(clippy.workDir.get().getParentFile(), Clippy.DEFAULT_GROUP));
+                    }
+                }
+            }
+        }));
+        toolBar.add(iAmSure);
         getContentPane().add(toolBar, BorderLayout.NORTH);
         File[] groups = clippy.workDir.get().getParentFile().listFiles();
         if (null == groups) {
@@ -175,6 +203,7 @@ public class ClippyFrame extends JFrame {
                 addGroupTab(g);
             }
         }
+        refreshGroupTab(clippy.workDir.get());
         tabbedPane.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent ce) {
@@ -218,7 +247,7 @@ public class ClippyFrame extends JFrame {
         return String.format("%1$tF %1$tT", ft);
     }
     
-    public void refreshGroupTab(File group) {
+    public final void refreshGroupTab(File group) {
         int index = tabbedPane.indexOfTab(group.getName());
         if (index != -1) {
             tabbedPane.remove(index);
@@ -342,5 +371,6 @@ public class ClippyFrame extends JFrame {
             newGroupDir.mkdir();
         }
         clippy.workDir.set(newGroupDir);
+        refreshGroupTab(clippy.workDir.get());
     }
 }

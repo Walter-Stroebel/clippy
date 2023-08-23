@@ -251,13 +251,14 @@ public class Clippy {
             homeDir.mkdir();
         }
 
-        File defaultGroup = new File(homeDir, "default");
+        File defaultGroup = new File(homeDir, DEFAULT_GROUP);
         if (!defaultGroup.exists()) {
             defaultGroup.mkdir();
         }
 
         return defaultGroup;
     }
+    public static final String DEFAULT_GROUP = "default";
 
     /**
      * Places the provided texts onto the system clipboard.
@@ -340,6 +341,19 @@ public class Clippy {
         }
     }
 
+    void toClipboardItem(File fileToRead) {
+        if (fileToRead.exists() && fileToRead.isFile()) {
+            try {
+                String content = new String(Files.readAllBytes(fileToRead.toPath()), StandardCharsets.UTF_8);
+                placeOnClipboard(content);
+            } catch (IOException ex) {
+                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", fileToRead);
+        }
+    }
+
     public void handleClipboard() {
         Transferable contents = clipboard.getContents(null);
         if (contents != null) {
@@ -387,7 +401,7 @@ public class Clippy {
                         gui.refreshGroupTab(workDir.get());
                     }
                 } catch (Exception ex) {
-                    // this happens often "Caused by: java.io.IOException: Owner failed to convert data", just ignore
+                    // no handling possible, can only ignore
                 }
             }
             // Handle image data
@@ -402,7 +416,7 @@ public class Clippy {
                         ImageIO.write(currentImage, "png", imageFile);
                     }
                 } catch (Exception ex) {
-                    Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+                    // no handling possible, can only ignore
                 }
             }
         }
