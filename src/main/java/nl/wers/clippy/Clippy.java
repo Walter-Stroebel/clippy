@@ -12,9 +12,11 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -75,22 +77,6 @@ import javax.swing.Timer;
  */
 public class Clippy {
 
-    private static final String usage = "## Clippy Utility Summary\n"
-            + "\n"
-            + "1. **Utility**: User operates a Java-based utility named \"Clippy\".\n"
-            + "2. **Functionality**: Clippy actively monitors the system clipboard for any copied text.\n"
-            + "3. **Command Execution**: \n"
-            + "   - Commands are encapsulated between `$@` and `@$`.\n"
-            + "   - When such a command is detected, Clippy processes it using Java's `ProcessBuilder`.\n"
-            + "   - Commands are executed within a specific directory (usually a Maven project root).\n"
-            + "   - The output of the command is captured and placed back on the clipboard for the user to paste.\n"
-            + "4. **Multiple Commands**: Multiple commands can be concatenated using a separator (`---CMD_OUTPUT_SEPARATOR---`).\n"
-            + "5. **Safety Measures**: \n"
-            + "   - Commands are only executed within directories under Git, limiting potential damage.\n"
-            + "   - User is aware of the risks and commits to verifying each command before allowing execution.\n"
-            + "   - An audit trail is maintained within Clippy.\n"
-            + "6. **Context Limitation**: Assistant has a token limit, which can be exceeded with verbose outputs or extensive code analysis.\n"
-            + "7. **User Interaction**: User can request the assistant to execute commands, view code, or make modifications, and then test them using Clippy.";
     /**
      * The home directory constant, pointing to the user's home directory.
      */
@@ -99,6 +85,11 @@ public class Clippy {
      * The port number used for the server socket functionality.
      */
     private static final int PORT = 25432;
+    /**
+     * Represents the current working directory for the application.
+     */
+    public static final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
+    public static final String DEFAULT_GROUP = "default";
 
     /**
      * Initializes the Clippy system tray application.Checks for system tray
@@ -114,20 +105,35 @@ public class Clippy {
         final Clippy instance = new Clippy();
         instance.init();
     }
+
+    /**
+     * Initializes the working directory for the application under the user's
+     * home directory. If the directory doesn't exist, it creates one.
+     *
+     * @return The default working directory.
+     */
+    private static File initializeWorkDir() {
+        File homeDir = new File(HOME_DIRECTORY, ".clippy");
+        if (!homeDir.exists()) {
+            homeDir.mkdir();
+        }
+
+        File defaultGroup = new File(homeDir, DEFAULT_GROUP);
+        if (!defaultGroup.exists()) {
+            defaultGroup.mkdir();
+        }
+
+        return defaultGroup;
+    }
     /**
      * Holds the latest data received from the server socket.
      */
-
     final AtomicReference<String> latestData = new AtomicReference<>();
     /**
      * Holds the last text content detected on the clipboard.
      */
     final AtomicReference<String> lastClipboardText = new AtomicReference<>(null);
 
-    /**
-     * Represents the current working directory for the application.
-     */
-    final AtomicReference<File> workDir = new AtomicReference<>(initializeWorkDir());
     private final ClippyFrame gui;
     /**
      * The system clipboard instance.
@@ -156,6 +162,25 @@ public class Clippy {
             }
         });
         timer.start();
+    }
+
+    public void copyResourceToItem(String name) {
+        try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
+            Files.copy(is, new File(generateUniqueFilename(".txt")).toPath());
+        } catch (IOException ex) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public String getResourceAsString(String name) {
+        try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
+            try ( DataInputStream dis = new DataInputStream(is)) {
+                return new String(dis.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return "Something weird happened. Check logs.";
     }
 
     /**
@@ -211,7 +236,6 @@ public class Clippy {
         } catch (AWTException e) {
             System.out.println("TrayIcon could not be added.");
         }
-        initializeClipboardMonitor();
     }
 
     /**
@@ -240,27 +264,6 @@ public class Clippy {
     }
 
     /**
-     * Initializes the working directory for the application under the user's
-     * home directory. If the directory doesn't exist, it creates one.
-     *
-     * @return The default working directory.
-     */
-    private File initializeWorkDir() {
-        File homeDir = new File(HOME_DIRECTORY, ".clippy");
-        if (!homeDir.exists()) {
-            homeDir.mkdir();
-        }
-
-        File defaultGroup = new File(homeDir, DEFAULT_GROUP);
-        if (!defaultGroup.exists()) {
-            defaultGroup.mkdir();
-        }
-
-        return defaultGroup;
-    }
-    public static final String DEFAULT_GROUP = "default";
-
-    /**
      * Places the provided texts onto the system clipboard.
      *
      * @param texts The array of texts to be placed on the clipboard.
@@ -276,7 +279,6 @@ public class Clippy {
 
         // Now, place the finalText on the clipboard
         StringSelection selection = new StringSelection(finalText);
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         clipboard.setContents(selection, selection);
     }
 
@@ -318,13 +320,6 @@ public class Clippy {
             JOptionPane.showMessageDialog(null, "Another instance of Clippy is already running.", "Error", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
         }
-    }
-
-    /**
-     * Initializes a clipboard monitor that checks the clipboard contents
-     * periodically.
-     */
-    private void initializeClipboardMonitor() {
     }
 
     void toClipboardItem(String name) {

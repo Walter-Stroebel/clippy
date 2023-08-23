@@ -170,6 +170,20 @@ public class ClippyFrame extends JFrame {
             }
         });
         itemToCB.setEnabled(false);
+        toolBar.add(new JButton(new AbstractAction("Usage -> Item") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                clippy.copyResourceToItem("usage.txt");
+                refreshGroupTab();
+            }
+        }));
+        toolBar.add(new JButton(new AbstractAction("Prompt -> Item") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                clippy.copyResourceToItem("HOWTO create a prompt.txt");
+                refreshGroupTab();
+            }
+        }));
         toolBar.add(itemToCB);
         toolBar.addSeparator();
         toolBar.add(new JButton(new AbstractAction("Delete group") {
@@ -250,6 +264,10 @@ public class ClippyFrame extends JFrame {
         return String.format("%1$tF %1$tT", ft);
     }
 
+    public final void refreshGroupTab() {
+        refreshGroupTab(Clippy.workDir.get());
+    }
+
     public final void refreshGroupTab(File group) {
         int index = tabbedPane.indexOfTab(group.getName());
         if (index != -1) {
@@ -287,6 +305,14 @@ public class ClippyFrame extends JFrame {
                         if (source instanceof JToggleButton) {
                             JToggleButton bt = (JToggleButton) source;
                             if (bt.isSelected()) {
+                                while (true) {
+                                    int index = tabbedPane.indexOfTab(VIEW);
+                                    if (index != -1) {
+                                        tabbedPane.remove(index);
+                                    } else {
+                                        break;
+                                    }
+                                }
                                 for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
                                     if (tabbedPane.getTitleAt(i).equals(VIEW)) {
                                         tabbedPane.remove(i);
