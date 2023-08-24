@@ -33,9 +33,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -349,6 +347,60 @@ public class Clippy {
         }
     }
 
+    private boolean startsAndEndsWith(String text, String start, String end) {
+        if (!text.startsWith(start)) {
+            return false;
+        }
+
+        int endIndex = text.lastIndexOf(end);
+        if (endIndex == -1) {
+            return false;
+        }
+
+        String trailingText = text.substring(endIndex + end.length());
+        return trailingText.trim().isEmpty();
+    }
+
+    /**
+     * Handles DOT content detected on the clipboard.
+     *
+     * @param currentText The detected DOT content.
+     */
+    private void handleDOT(String currentText) {
+        String filename = JOptionPane.showInputDialog(null, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
+        filename = filename.trim();
+        String fullFilename = filename + ".dot";
+        File outputFile = new File(workDir.get(), fullFilename);
+
+        // Handle backups
+        if (outputFile.exists()) {
+            File backupFile = new File(workDir.get(), filename + ".bak");
+            backupFile.delete(); // Delete existing backup
+            outputFile.renameTo(backupFile); // Rename current file to backup
+        }
+
+        // Save the current text to the new file
+        try ( FileWriter writer = new FileWriter(outputFile)) {
+            writer.write(currentText);
+        } catch (IOException ex) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        // Run Graphviz
+        try {
+            ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", "-o", filename + ".png", outputFile.getAbsolutePath());
+            pb.directory(workDir.get());
+            Process process = pb.start();
+            process.waitFor();
+
+            File pngOutputFile = new File(workDir.get(), filename + ".png");
+            displayImage(pngOutputFile);
+
+        } catch (Exception e) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
+
     public void handleClipboard() {
         Transferable contents = clipboard.getContents(null);
         if (contents != null) {
@@ -363,8 +415,10 @@ public class Clippy {
                         lastClipboardText.set(currentText);
 
                         // Check for plantUML content
-                        if (currentText.startsWith("@startuml")) {
+                        if (startsAndEndsWith(currentText, "@startuml", "@enduml")) {
                             handlePlantUML(lastClipboardText.get());
+                        } else if (startsAndEndsWith(currentText, "digraph", "}")) {
+                            handleDOT(lastClipboardText.get());
                         } else {
                             File outputFile = new File(generateUniqueFilename(".txt"));
                             // Save the current text to the new file
@@ -423,20 +477,12 @@ public class Clippy {
      * @param currentText The detected PlantUML content.
      */
     private void handlePlantUML(String currentText) {
-        JTextField filenameField = new JTextField(15);
-        JPanel panel = new JPanel();
-        panel.add(new JLabel("Filename (without extension):"));
-        panel.add(filenameField);
-
-        Object[] options = {"PNG", "ASCII", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(null, panel, "PlantUML", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
-
+        String filename = JOptionPane.showInputDialog(null, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
+        filename = filename.trim();
         // If "Cancel" is pressed or no filename is provided
-        if (choice == 2 || filenameField.getText().trim().isEmpty()) {
+        if (filename == null || filename.trim().isEmpty()) {
             return;
         }
-
-        String filename = filenameField.getText().trim();
         String fullFilename = filename + ".txt";
         File outputFile = new File(workDir.get(), fullFilename);
 
@@ -454,24 +500,15 @@ public class Clippy {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
         }
 
-        String formatFlag = (choice == 1) ? "-ttxt" : "-tpng"; // Use -ttxt for ASCII, default to -tpng
-
-        // Run PlantUML
+        // Run PlantUML with PNG output
         try {
-            ProcessBuilder pb = new ProcessBuilder("plantuml", formatFlag, outputFile.getAbsolutePath());
+            ProcessBuilder pb = new ProcessBuilder("plantuml", "-tpng", outputFile.getAbsolutePath());
             pb.directory(workDir.get());
             Process process = pb.start();
             process.waitFor();
 
-            if (choice == 1) {
-                File asciiOutputFile = new File(workDir.get(), filename + ".atxt");
-                String asciiContent = new String(Files.readAllBytes(asciiOutputFile.toPath()), StandardCharsets.UTF_8);
-                placeOnClipboard(asciiContent);
-            } else {
-                File pngOutputFile = new File(workDir.get(), filename + ".png");
-                displayImage(pngOutputFile);
-            }
-
+            File pngOutputFile = new File(workDir.get(), filename.trim() + ".png");
+            displayImage(pngOutputFile);
         } catch (Exception e) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
         }
