@@ -1,0 +1,20 @@
+digraph Celebration {
+    // Balloons
+    B1 [shape=circle, label="🎈"]
+    B2 [shape=circle, label="🎈"]
+    B3 [shape=circle, label="🎈"]
+
+    // Cake
+    Cake [shape=box, label="🎂"]
+
+    // Party Hats
+    H1 [shape=triangle, label="🥳"]
+    H2 [shape=triangle, label="🥳"]
+
+    // Connections
+    B1 -> Cake
+    B2 -> Cake
+    B3 -> Cake
+    H1 -> Cake
+    H2 -> Cake
+}
