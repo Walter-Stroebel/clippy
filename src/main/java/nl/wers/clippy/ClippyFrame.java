@@ -28,6 +28,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -93,7 +94,7 @@ public class ClippyFrame extends JFrame {
     private final JTabbedPane tabbedPane;
     private final Config config;
     private File selectedFile = null;
-    private final JButton itemToCB;
+    private JButton itemToCB;
 
     public ClippyFrame(final Clippy clippy) {
         setTitle("Clippy");
@@ -140,16 +141,43 @@ public class ClippyFrame extends JFrame {
         tabbedPane = new JTabbedPane();
         getContentPane().add(tabbedPane, BorderLayout.CENTER);
 
+        JToolBar toolBar = buildToolBar(clippy);
+        getContentPane().add(toolBar, BorderLayout.NORTH);
+        File[] groups = clippy.workDir.get().getParentFile().listFiles();
+        if (null == groups) {
+            // at the very least an array with "default" should be returned.
+            Logger.getLogger(ClippyFrame.class.getName()).log(Level.SEVERE, "Logic error!");
+            System.exit(0);
+        }
+        for (File g : groups) {
+            if (g.isDirectory()) {
+                addGroupTab(g);
+            }
+        }
+        refreshGroupTab(clippy.workDir.get());
+        tabbedPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent ce) {
+                JTabbedPane sourceTabbedPane = (JTabbedPane) ce.getSource();
+                int selectedIndex = sourceTabbedPane.getSelectedIndex();
+                String title = sourceTabbedPane.getTitleAt(selectedIndex);
+                if (!title.equals(VIEW)) {
+                    clippy.workDir.set(new File(clippy.workDir.get().getParentFile(), title));
+                }
+            }
+        });
+    }
+
+    public JToolBar buildToolBar(final Clippy clippy) {
         // Initialize JToolBar for primary actions
         JToolBar toolBar = new JToolBar();
         // Input field for new group name
         final JTextField groupNameField = new JTextField(15); // 15 columns wide
         final JCheckBox iAmSure = new JCheckBox("Sure?");
-        Dimension fixedSize = new Dimension(200, 25); // Example dimensions
+        Dimension fixedSize = new Dimension(200, 25);
         groupNameField.setPreferredSize(fixedSize);
         groupNameField.setMaximumSize(fixedSize);
         toolBar.add(groupNameField);
-
         toolBar.add(new JButton(new AbstractAction("New Group") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -193,45 +221,37 @@ public class ClippyFrame extends JFrame {
                     JOptionPane.showMessageDialog(ClippyFrame.this, "You are not sure.");
                 } else {
                     iAmSure.setSelected(false);
-                    File[] all = clippy.workDir.get().listFiles();
+                    File[] all = Clippy.workDir.get().listFiles();
                     if (null != all) {
                         for (File f : all) {
                             f.delete();
                         }
                     }
-                    if (!clippy.workDir.get().getName().equals(Clippy.DEFAULT_GROUP)) {
-                        clippy.workDir.get().delete();
+                    if (!Clippy.workDir.get().getName().equals(Clippy.DEFAULT_GROUP)) {
+                        Clippy.workDir.get().delete();
                         tabbedPane.remove(tabbedPane.getSelectedIndex());
-                        refreshGroupTab(new File(clippy.workDir.get().getParentFile(), Clippy.DEFAULT_GROUP));
+                        refreshGroupTab(new File(Clippy.workDir.get().getParentFile(), Clippy.DEFAULT_GROUP));
                     }
                 }
             }
         }));
         toolBar.add(iAmSure);
-        getContentPane().add(toolBar, BorderLayout.NORTH);
-        File[] groups = clippy.workDir.get().getParentFile().listFiles();
-        if (null == groups) {
-            // at the very least an array with "default" should be returned.
-            Logger.getLogger(ClippyFrame.class.getName()).log(Level.SEVERE, "Logic error!");
-            System.exit(0);
-        }
-        for (File g : groups) {
-            if (g.isDirectory()) {
-                addGroupTab(g);
-            }
-        }
-        refreshGroupTab(clippy.workDir.get());
-        tabbedPane.addChangeListener(new ChangeListener() {
+        toolBar.addSeparator();
+        toolBar.add(new JButton(new AbstractAction("Change code base") {
             @Override
-            public void stateChanged(ChangeEvent ce) {
-                JTabbedPane sourceTabbedPane = (JTabbedPane) ce.getSource();
-                int selectedIndex = sourceTabbedPane.getSelectedIndex();
-                String title = sourceTabbedPane.getTitleAt(selectedIndex);
-                if (!title.equals(VIEW)) {
-                    clippy.workDir.set(new File(clippy.workDir.get().getParentFile(), title));
+            public void actionPerformed(ActionEvent ae) {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                fileChooser.setCurrentDirectory(config.getCodeBase());
+
+                int returnValue = fileChooser.showOpenDialog(ClippyFrame.this);
+                if (returnValue == JFileChooser.APPROVE_OPTION) {
+                    File selectedDirectory = fileChooser.getSelectedFile();
+                    config.setCodeBase(selectedDirectory);
                 }
             }
-        });
+        }));
+        return toolBar;
     }
 
     private void updateConfig() {

@@ -87,6 +87,10 @@ public class Config {
         }
     }
 
+    public String getProperty(SECTIONS section, String propName, String def) {
+        return properties.getProperty(section.name() + "." + propName, def);
+    }
+
     public String getProperty(SECTIONS section, String propName) {
         return properties.getProperty(section.name() + "." + propName);
     }
@@ -101,6 +105,7 @@ public class Config {
     }
 
     public File getCodeBase() {
+        String cb = getProperty(SECTIONS.CODEBASE, "home", System.getProperty("user.home"));
         return new File(getProperty(SECTIONS.CODEBASE, "home"));
     }
 

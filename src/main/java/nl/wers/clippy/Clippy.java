@@ -78,7 +78,7 @@ public class Clippy {
     /**
      * The home directory constant, pointing to the user's home directory.
      */
-    private static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
+    public static final File HOME_DIRECTORY = new File(System.getProperty("user.home"));
     /**
      * The port number used for the server socket functionality.
      */
@@ -401,6 +401,46 @@ public class Clippy {
         }
     }
 
+    /**
+     * Handles SVG content detected on the clipboard.
+     *
+     * @param currentText The detected DOT content.
+     */
+    private void handleSVG(String currentText) {
+        String filename = JOptionPane.showInputDialog(null, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
+        filename = filename.trim();
+        File svgFile = new File(workDir.get(), filename + ".svg");
+        File pngFile = new File(workDir.get(), filename + ".png");
+
+        // Handle backups
+        if (svgFile.exists()) {
+            File backupFile = new File(workDir.get(), filename + ".bak");
+            backupFile.delete(); // Delete existing backup
+            svgFile.renameTo(backupFile); // Rename current file to backup
+        }
+
+        // Save the current text to the new file
+        try ( FileWriter writer = new FileWriter(svgFile)) {
+            writer.write(currentText);
+        } catch (IOException ex) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        // Run ImageMagick
+        try {
+            ProcessBuilder pb = new ProcessBuilder("convert", svgFile.getAbsolutePath(),pngFile.getAbsolutePath());
+            pb.inheritIO();
+            pb.directory(workDir.get());
+            Process process = pb.start();
+            process.waitFor();
+
+            displayImage(pngFile);
+
+        } catch (Exception e) {
+            Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
+
     public void handleClipboard() {
         Transferable contents = clipboard.getContents(null);
         if (contents != null) {
@@ -413,11 +453,11 @@ public class Clippy {
                         lastClipboardText.set(currentText);
                     } else if (!currentText.equals(lastClipboardText.get())) {
                         lastClipboardText.set(currentText);
-
-                        // Check for plantUML content
-                        if (startsAndEndsWith(currentText, "@startuml", "@enduml")) {
+                        if (startsAndEndsWith(currentText, "@startuml", "@enduml")) { // Check for plantUML content
                             handlePlantUML(lastClipboardText.get());
-                        } else if (startsAndEndsWith(currentText, "digraph", "}")) {
+                        } else if (startsAndEndsWith(currentText, "<svg xmlns", "</svg>")) {// check for SVG content
+                            handleSVG(lastClipboardText.get());
+                        } else if (startsAndEndsWith(currentText, "digraph", "}")) {// check for GraphViz content
                             handleDOT(lastClipboardText.get());
                         } else {
                             File outputFile = new File(generateUniqueFilename(".txt"));
