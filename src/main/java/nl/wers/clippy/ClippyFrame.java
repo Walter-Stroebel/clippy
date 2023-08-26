@@ -171,6 +171,13 @@ public class ClippyFrame extends JFrame {
     public JToolBar buildToolBar(final Clippy clippy) {
         // Initialize JToolBar for primary actions
         JToolBar toolBar = new JToolBar();
+        toolBar.add(new JButton(new AbstractAction("Exit") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                System.exit(0);
+            }
+        }));
+        toolBar.addSeparator();
         // Input field for new group name
         final JTextField groupNameField = new JTextField(15); // 15 columns wide
         final JCheckBox iAmSure = new JCheckBox("Sure?");
