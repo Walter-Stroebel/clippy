@@ -67,6 +67,10 @@ Here is an example, this is what ChatGPT produced when I asked it to celebrate:
 
 [party sample PNG](party.png)
 
+### General drawing
+- Integration with ImageMagick
+- You can ask ChatGPT to make simple images as SVG. Clippy will detect SVG and convert it to PNG using ImageMagick "convert".
+- Beware that an LLM is not capable of actual processing. For instance, even a pie chart is iffy. Simple shapes work fine.
 
 ### Development Odyssey
 Our developmental trajectory was an amalgamation of iterative decisions and consistent collaboration. A snapshot of our journey:
