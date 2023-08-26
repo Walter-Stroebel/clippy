@@ -29,11 +29,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -115,12 +112,12 @@ public class Clippy {
         if (!homeDir.exists()) {
             homeDir.mkdir();
         }
-
+        
         File defaultGroup = new File(homeDir, DEFAULT_GROUP);
         if (!defaultGroup.exists()) {
             defaultGroup.mkdir();
         }
-
+        
         return defaultGroup;
     }
     /**
@@ -131,7 +128,7 @@ public class Clippy {
      * Holds the last text content detected on the clipboard.
      */
     final AtomicReference<String> lastClipboardText = new AtomicReference<>(null);
-
+    
     private final ClippyFrame gui;
     /**
      * The system clipboard instance.
@@ -161,7 +158,7 @@ public class Clippy {
         });
         timer.start();
     }
-
+    
     public void copyResourceToItem(String name) {
         try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
             Files.copy(is, new File(generateUniqueFilename(".txt")).toPath());
@@ -169,7 +166,7 @@ public class Clippy {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
+    
     public String getResourceAsString(String name) {
         try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
             try ( DataInputStream dis = new DataInputStream(is)) {
@@ -189,7 +186,7 @@ public class Clippy {
      */
     private void init() throws HeadlessException {
         initializeServerSocket();
-
+        
         final PopupMenu popup = new PopupMenu();
 
         // Creating a custom icon using BufferedImage and Graphics2D
@@ -203,10 +200,10 @@ public class Clippy {
         // Drawing a lighter gray outlined rectangle on top
         g2d.setColor(Color.LIGHT_GRAY);
         g2d.drawRect(8, 8, 8, 8);
-
+        
         g2d.dispose();
         final TrayIcon trayIcon = new TrayIcon(iconImage, "Clippy");
-
+        
         final SystemTray tray = SystemTray.getSystemTray();
 
         // Add components to popup menu using ActionListener
@@ -218,7 +215,7 @@ public class Clippy {
             }
         });
         popup.add(exitItem);
-
+        
         trayIcon.setPopupMenu(popup);
         trayIcon.addMouseListener(new MouseAdapter() {
             @Override
@@ -228,7 +225,7 @@ public class Clippy {
                 }
             }
         });
-
+        
         try {
             tray.add(trayIcon);
         } catch (AWTException e) {
@@ -252,12 +249,12 @@ public class Clippy {
         long timestamp = System.currentTimeMillis();
         String saveExt = ext.startsWith(".") ? ext.toLowerCase() : "." + ext.toLowerCase();
         File file = new File(workDir.get(), timestamp + saveExt);
-
+        
         while (file.exists()) {
             timestamp++;
             file = new File(workDir.get(), timestamp + saveExt);
         }
-
+        
         return file.getAbsolutePath();
     }
 
@@ -313,13 +310,13 @@ public class Clippy {
                     }
                 }
             }).start();
-
+            
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Another instance of Clippy is already running.", "Error", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
         }
     }
-
+    
     void toClipboardItem(String name) {
         File fileToRead = new File(workDir.get(), name);
         if (fileToRead.exists() && fileToRead.isFile()) {
@@ -333,7 +330,7 @@ public class Clippy {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", name);
         }
     }
-
+    
     void toClipboardItem(File fileToRead) {
         if (fileToRead.exists() && fileToRead.isFile()) {
             try {
@@ -346,17 +343,17 @@ public class Clippy {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", fileToRead);
         }
     }
-
+    
     private boolean startsAndEndsWith(String text, String start, String end) {
         if (!text.startsWith(start)) {
             return false;
         }
-
+        
         int endIndex = text.lastIndexOf(end);
         if (endIndex == -1) {
             return false;
         }
-
+        
         String trailingText = text.substring(endIndex + end.length());
         return trailingText.trim().isEmpty();
     }
@@ -367,7 +364,7 @@ public class Clippy {
      * @param currentText The detected DOT content.
      */
     private void handleDOT(String currentText) {
-        String filename = JOptionPane.showInputDialog(null, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
+        String filename = JOptionPane.showInputDialog(gui, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
         filename = filename.trim();
         String fullFilename = filename + ".dot";
         File outputFile = new File(workDir.get(), fullFilename);
@@ -392,10 +389,10 @@ public class Clippy {
             pb.directory(workDir.get());
             Process process = pb.start();
             process.waitFor();
-
+            
             File pngOutputFile = new File(workDir.get(), filename + ".png");
             displayImage(pngOutputFile);
-
+            
         } catch (Exception e) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
         }
@@ -407,7 +404,7 @@ public class Clippy {
      * @param currentText The detected DOT content.
      */
     private void handleSVG(String currentText) {
-        String filename = JOptionPane.showInputDialog(null, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
+        String filename = JOptionPane.showInputDialog(gui, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
         filename = filename.trim();
         File svgFile = new File(workDir.get(), filename + ".svg");
         File pngFile = new File(workDir.get(), filename + ".png");
@@ -428,19 +425,19 @@ public class Clippy {
 
         // Run ImageMagick
         try {
-            ProcessBuilder pb = new ProcessBuilder("convert", svgFile.getAbsolutePath(),pngFile.getAbsolutePath());
+            ProcessBuilder pb = new ProcessBuilder("convert", svgFile.getAbsolutePath(), pngFile.getAbsolutePath());
             pb.inheritIO();
             pb.directory(workDir.get());
             Process process = pb.start();
             process.waitFor();
-
+            
             displayImage(pngFile);
-
+            
         } catch (Exception e) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
         }
     }
-
+    
     public void handleClipboard() {
         Transferable contents = clipboard.getContents(null);
         if (contents != null) {
@@ -452,42 +449,7 @@ public class Clippy {
                     if (null == lastClipboardText.get()) {
                         lastClipboardText.set(currentText);
                     } else if (!currentText.equals(lastClipboardText.get())) {
-                        lastClipboardText.set(currentText);
-                        if (startsAndEndsWith(currentText, "@startuml", "@enduml")) { // Check for plantUML content
-                            handlePlantUML(lastClipboardText.get());
-                        } else if (startsAndEndsWith(currentText, "<svg ", "</svg>")) {// check for SVG content
-                            handleSVG(lastClipboardText.get());
-                        } else if (startsAndEndsWith(currentText, "digraph", "}")) {// check for GraphViz content
-                            handleDOT(lastClipboardText.get());
-                        } else {
-                            File outputFile = new File(generateUniqueFilename(".txt"));
-                            // Save the current text to the new file
-                            try ( FileWriter writer = new FileWriter(outputFile)) {
-                                writer.write(currentText);
-                            } catch (IOException ex) {
-                                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
-                            }
-                            StringBuilder cat = null;
-                            while (currentText.contains("$@")) {
-                                int cmd = currentText.indexOf("$@");
-                                if (cmd >= 0) {
-                                    int eoc = currentText.indexOf("@$", cmd);
-                                    if (eoc > cmd + 2) {
-                                        if (null == cat) {
-                                            cat = new StringBuilder();
-                                        } else {
-                                            cat.append(OUTPUT_SEPARATOR);
-                                        }
-                                        cat.append(handleCommand(currentText.substring(cmd + 2, eoc)));
-                                        currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
-                                    }
-                                }
-                            }
-                            if (null != cat) {
-                                placeOnClipboard(cat.toString());
-                            }
-                        }
-                        gui.refreshGroupTab(workDir.get());
+                        doClipboard(currentText);
                     }
                 } catch (Exception ex) {
                     // no handling possible, can only ignore
@@ -510,6 +472,51 @@ public class Clippy {
             }
         }
     }
+    
+    public void redoClipboard() {
+        if (null != lastClipboardText.get()) {
+            doClipboard(lastClipboardText.get());
+        }
+    }
+    
+    public void doClipboard(String currentText) {
+        lastClipboardText.set(currentText);
+        if (startsAndEndsWith(currentText, "@startuml", "@enduml")) { // Check for plantUML content
+            handlePlantUML(lastClipboardText.get());
+        } else if (startsAndEndsWith(currentText, "<svg ", "</svg>")) {// check for SVG content
+            handleSVG(lastClipboardText.get());
+        } else if (startsAndEndsWith(currentText, "digraph", "}")) {// check for GraphViz content
+            handleDOT(lastClipboardText.get());
+        } else {
+            File outputFile = new File(generateUniqueFilename(".txt"));
+            // Save the current text to the new file
+            try ( FileWriter writer = new FileWriter(outputFile)) {
+                writer.write(currentText);
+            } catch (IOException ex) {
+                Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            StringBuilder cat = null;
+            while (currentText.contains("$@")) {
+                int cmd = currentText.indexOf("$@");
+                if (cmd >= 0) {
+                    int eoc = currentText.indexOf("@$", cmd);
+                    if (eoc > cmd + 2) {
+                        if (null == cat) {
+                            cat = new StringBuilder();
+                        } else {
+                            cat.append(OUTPUT_SEPARATOR);
+                        }
+                        cat.append(handleCommand(currentText.substring(cmd + 2, eoc)));
+                        currentText = new StringBuilder(currentText).delete(cmd, eoc + 2).toString();
+                    }
+                }
+            }
+            if (null != cat) {
+                placeOnClipboard(cat.toString());
+            }
+        }
+        gui.refreshGroupTab(workDir.get());
+    }
 
     /**
      * Handles PlantUML content detected on the clipboard.
@@ -517,7 +524,7 @@ public class Clippy {
      * @param currentText The detected PlantUML content.
      */
     private void handlePlantUML(String currentText) {
-        String filename = JOptionPane.showInputDialog(null, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
+        String filename = JOptionPane.showInputDialog(gui, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
         filename = filename.trim();
         // If "Cancel" is pressed or no filename is provided
         if (filename == null || filename.trim().isEmpty()) {
@@ -546,7 +553,7 @@ public class Clippy {
             pb.directory(workDir.get());
             Process process = pb.start();
             process.waitFor();
-
+            
             File pngOutputFile = new File(workDir.get(), filename.trim() + ".png");
             displayImage(pngOutputFile);
         } catch (Exception e) {
@@ -560,16 +567,14 @@ public class Clippy {
      * @param imageFile The file containing the image to display.
      */
     private void displayImage(File imageFile) {
-        JFrame frame = new JFrame("Generated UML Diagram");
+        JFrame frame = new JFrame(imageFile.getName());
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setSize(800, 600);  // Adjust size as needed
-        frame.setLocationRelativeTo(null);  // Center the frame
-
-        ImageIcon imageIcon = new ImageIcon(imageFile.getAbsolutePath());
-        JLabel label = new JLabel(imageIcon);
-        JScrollPane scrollPane = new JScrollPane(label);
-        frame.add(scrollPane);
-
+        frame.setLocationRelativeTo(gui);  // Center the frame
+        frame.setAlwaysOnTop(true);
+        ImageViewer iView = new ImageViewer(imageFile);
+        frame.getContentPane().setLayout(new BorderLayout());
+        frame.getContentPane().add(iView.getViewPanel(),BorderLayout.CENTER);
         frame.setVisible(true);
     }
 
@@ -600,7 +605,7 @@ public class Clippy {
         BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
         return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
     }
-
+    
     private String handleCommand(final String cmdString) {
         System.out.println("Executing " + cmdString + " in " + Config.getInstance(this).getCodeBase());
         // To capture output
@@ -610,7 +615,7 @@ public class Clippy {
             pb.directory(Config.getInstance(this).getCodeBase());
             pb.redirectErrorStream(true);
             final Process process = pb.start();
-
+            
             Thread outputThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -626,7 +631,7 @@ public class Clippy {
                 }
             });
             outputThread.start();
-
+            
             if (process.waitFor(10, TimeUnit.SECONDS)) {
                 outputThread.join(); // Wait for the output reading thread to finish
             } else {
@@ -639,5 +644,5 @@ public class Clippy {
         }
         return output.toString();
     }
-
+    
 }

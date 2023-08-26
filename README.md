@@ -30,6 +30,10 @@ Java 7 (with JRE 11)
 - Empowers users to either create a new group or navigate through existing ones.
 - The 'workDir' (working directory) is an AtomicReference pointing towards the currently active group directory.
 
+### Built-in Image Viewer
+- Can be floating or in a tab.
+- Supports simple dragging (left button) and zooming (mouse wheel).
+
 ### GUI Interaction
 - Clippy's main GUI is primarily maximized for a holistic view, but users can customize its placement.
 - The GUI state (size, location, and maximized status) is preserved across sessions.
@@ -40,7 +44,9 @@ The toolbar provides quick access to various functionalities of the application.
 
 #### Exit
 - **Function**: Exits the application.
-- **Usage**: Click the "Exit" button.
+
+#### Redo
+- **Function**: Reprocess the current clipboard contents, if any.
 
 #### New Group
 - **Function**: Creates a new group.

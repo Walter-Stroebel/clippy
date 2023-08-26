@@ -177,6 +177,12 @@ public class ClippyFrame extends JFrame {
                 System.exit(0);
             }
         }));
+        toolBar.add(new JButton(new AbstractAction("Redo") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                clippy.redoClipboard();
+            }
+        }));
         toolBar.addSeparator();
         // Input field for new group name
         final JTextField groupNameField = new JTextField(15); // 15 columns wide
