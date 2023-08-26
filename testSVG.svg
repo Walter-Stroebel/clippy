@@ -1,0 +1,11 @@
+<svg height="210" width="400">
+  <!-- Face -->
+  <circle cx="100" cy="100" r="95" stroke="black" stroke-width="4" fill="yellow" />
+
+  <!-- Eyes -->
+  <circle cx="70" cy="70" r="10" stroke="black" stroke-width="2" fill="black" />
+  <circle cx="130" cy="70" r="10" stroke="black" stroke-width="2" fill="black" />
+
+  <!-- Mouth -->
+  <path d="M 50 100 Q 100 150 150 100" stroke="black" stroke-width="4" fill="none" />
+</svg>
