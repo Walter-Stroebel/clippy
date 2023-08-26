@@ -110,6 +110,12 @@ Here is an example, this is what ChatGPT produced when I asked it to celebrate:
 - You can ask ChatGPT to make simple images as SVG. Clippy will detect SVG and convert it to PNG using ImageMagick "convert".
 - Beware that an LLM is not capable of actual processing. For instance, even a pie chart is iffy. Simple shapes work fine.
 
+
+[svg sample svg](testSVG.svg)
+
+[svg sample PNG](testSVG.png)
+
+
 ### Development Odyssey
 Our developmental trajectory was an amalgamation of iterative decisions and consistent collaboration. A snapshot of our journey:
 
