@@ -455,7 +455,7 @@ public class Clippy {
                         lastClipboardText.set(currentText);
                         if (startsAndEndsWith(currentText, "@startuml", "@enduml")) { // Check for plantUML content
                             handlePlantUML(lastClipboardText.get());
-                        } else if (startsAndEndsWith(currentText, "<svg xmlns", "</svg>")) {// check for SVG content
+                        } else if (startsAndEndsWith(currentText, "<svg ", "</svg>")) {// check for SVG content
                             handleSVG(lastClipboardText.get());
                         } else if (startsAndEndsWith(currentText, "digraph", "}")) {// check for GraphViz content
                             handleDOT(lastClipboardText.get());
