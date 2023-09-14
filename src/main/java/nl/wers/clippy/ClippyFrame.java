@@ -2,7 +2,6 @@
  */
 package nl.wers.clippy;
 
-import nl.infcomtec.simpelimage.ImageViewer;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -43,6 +42,7 @@ import javax.swing.JToolBar;
 import javax.swing.SwingConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import nl.infcomtec.simpelimage.ImageViewer;
 
 /**
  * ClippyFrame represents the main GUI for the Clippy application, providing an

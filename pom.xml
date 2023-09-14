@@ -27,4 +27,11 @@
       </plugin>
     </plugins>
   </build>
+    <dependencies>
+        <dependency>
+            <groupId>nl.infcomtec</groupId>
+            <artifactId>SimpleImage</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
 </project>
