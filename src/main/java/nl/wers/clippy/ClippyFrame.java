@@ -2,6 +2,7 @@
  */
 package nl.wers.clippy;
 
+import nl.infcomtec.simpelimage.ImageViewer;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
