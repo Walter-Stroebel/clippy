@@ -1,15 +1,16 @@
 Clippy Utility Summary
 
 Utility: User operates a Java-based utility named "Clippy."
+
 Functionality: Clippy actively monitors the system clipboard for any copied text.
+
 Command Execution: Commands are encapsulated between $@ and @$.
-When such a command is detected, Clippy processes it using Java's ProcessBuilder.
-Commands are executed within a specific directory (usually a Maven project root).
-The output of the command is captured and placed back on the clipboard for the user to paste.
 Multiple Commands: Multiple commands can be concatenated using a separator ---CMD_OUTPUT_SEPARATOR--- on its own line.
-PlantUML and DOT Integration: Clippy can detect PlantUML and DOT (Graphviz) content on the clipboard. It then offers the option to render as PNG, with a built-in image viewer to display the rendered images.
-Safety Measures: Commands are only executed within directories under Git, limiting potential damage.
+The output of the command is captured and placed back on the clipboard for the user to paste.
+When such a command is detected, Clippy processes it using Java's ProcessBuilder.
+
+Safety Measures: Commands are only executed within a specific directory under Git, limiting potential damage.
 The user is aware of the risks and commits to verifying each command before allowing execution.
 An audit trail is maintained within Clippy.
-Context Limitation: The assistant has a token limit, which can be exceeded with verbose outputs or extensive code analysis.
-User Interaction: The user can request the assistant to execute commands, view code, or make modifications, and then test them using Clippy.
+
+PlantUML and DOT Integration: Clippy can detect PlantUML, DOT (Graphviz) and SVG content on the clipboard. It then offers the option to render as PNG, with a built-in image viewer to display the rendered images.

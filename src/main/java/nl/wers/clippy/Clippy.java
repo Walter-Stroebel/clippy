@@ -112,12 +112,12 @@ public class Clippy {
         if (!homeDir.exists()) {
             homeDir.mkdir();
         }
-        
+
         File defaultGroup = new File(homeDir, DEFAULT_GROUP);
         if (!defaultGroup.exists()) {
             defaultGroup.mkdir();
         }
-        
+
         return defaultGroup;
     }
     /**
@@ -128,7 +128,7 @@ public class Clippy {
      * Holds the last text content detected on the clipboard.
      */
     final AtomicReference<String> lastClipboardText = new AtomicReference<>(null);
-    
+
     private final ClippyFrame gui;
     /**
      * The system clipboard instance.
@@ -158,7 +158,7 @@ public class Clippy {
         });
         timer.start();
     }
-    
+
     public void copyResourceToItem(String name) {
         try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
             Files.copy(is, new File(generateUniqueFilename(".txt")).toPath());
@@ -166,7 +166,7 @@ public class Clippy {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
     public String getResourceAsString(String name) {
         try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
             try ( DataInputStream dis = new DataInputStream(is)) {
@@ -186,7 +186,7 @@ public class Clippy {
      */
     private void init() throws HeadlessException {
         initializeServerSocket();
-        
+
         final PopupMenu popup = new PopupMenu();
 
         // Creating a custom icon using BufferedImage and Graphics2D
@@ -200,10 +200,10 @@ public class Clippy {
         // Drawing a lighter gray outlined rectangle on top
         g2d.setColor(Color.LIGHT_GRAY);
         g2d.drawRect(8, 8, 8, 8);
-        
+
         g2d.dispose();
         final TrayIcon trayIcon = new TrayIcon(iconImage, "Clippy");
-        
+
         final SystemTray tray = SystemTray.getSystemTray();
 
         // Add components to popup menu using ActionListener
@@ -215,7 +215,7 @@ public class Clippy {
             }
         });
         popup.add(exitItem);
-        
+
         trayIcon.setPopupMenu(popup);
         trayIcon.addMouseListener(new MouseAdapter() {
             @Override
@@ -225,7 +225,7 @@ public class Clippy {
                 }
             }
         });
-        
+
         try {
             tray.add(trayIcon);
         } catch (AWTException e) {
@@ -249,12 +249,12 @@ public class Clippy {
         long timestamp = System.currentTimeMillis();
         String saveExt = ext.startsWith(".") ? ext.toLowerCase() : "." + ext.toLowerCase();
         File file = new File(workDir.get(), timestamp + saveExt);
-        
+
         while (file.exists()) {
             timestamp++;
             file = new File(workDir.get(), timestamp + saveExt);
         }
-        
+
         return file.getAbsolutePath();
     }
 
@@ -310,13 +310,13 @@ public class Clippy {
                     }
                 }
             }).start();
-            
+
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Another instance of Clippy is already running.", "Error", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
         }
     }
-    
+
     void toClipboardItem(String name) {
         File fileToRead = new File(workDir.get(), name);
         if (fileToRead.exists() && fileToRead.isFile()) {
@@ -330,7 +330,7 @@ public class Clippy {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", name);
         }
     }
-    
+
     void toClipboardItem(File fileToRead) {
         if (fileToRead.exists() && fileToRead.isFile()) {
             try {
@@ -343,17 +343,17 @@ public class Clippy {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, "File not found: {0}", fileToRead);
         }
     }
-    
+
     private boolean startsAndEndsWith(String text, String start, String end) {
         if (!text.startsWith(start)) {
             return false;
         }
-        
+
         int endIndex = text.lastIndexOf(end);
         if (endIndex == -1) {
             return false;
         }
-        
+
         String trailingText = text.substring(endIndex + end.length());
         return trailingText.trim().isEmpty();
     }
@@ -389,10 +389,10 @@ public class Clippy {
             pb.directory(workDir.get());
             Process process = pb.start();
             process.waitFor();
-            
+
             File pngOutputFile = new File(workDir.get(), filename + ".png");
             displayImage(pngOutputFile);
-            
+
         } catch (Exception e) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
         }
@@ -430,14 +430,14 @@ public class Clippy {
             pb.directory(workDir.get());
             Process process = pb.start();
             process.waitFor();
-            
+
             displayImage(pngFile);
-            
+
         } catch (Exception e) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, e);
         }
     }
-    
+
     public void handleClipboard() {
         Transferable contents = clipboard.getContents(null);
         if (contents != null) {
@@ -472,13 +472,13 @@ public class Clippy {
             }
         }
     }
-    
+
     public void redoClipboard() {
         if (null != lastClipboardText.get()) {
             doClipboard(lastClipboardText.get());
         }
     }
-    
+
     public void doClipboard(String currentText) {
         lastClipboardText.set(currentText);
         if (startsAndEndsWith(currentText, "@startuml", "@enduml")) { // Check for plantUML content
@@ -553,7 +553,7 @@ public class Clippy {
             pb.directory(workDir.get());
             Process process = pb.start();
             process.waitFor();
-            
+
             File pngOutputFile = new File(workDir.get(), filename.trim() + ".png");
             displayImage(pngOutputFile);
         } catch (Exception e) {
@@ -574,7 +574,7 @@ public class Clippy {
         frame.setAlwaysOnTop(true);
         ImageViewer iView = new ImageViewer(imageFile);
         frame.getContentPane().setLayout(new BorderLayout());
-        frame.getContentPane().add(iView.getViewPanel(),BorderLayout.CENTER);
+        frame.getContentPane().add(iView.getScalePanPanel(), BorderLayout.CENTER);
         frame.setVisible(true);
     }
 
@@ -605,17 +605,23 @@ public class Clippy {
         BufferedImage smallImage = resizeImage(image, 64, 64); // Resize for faster hashing
         return Arrays.hashCode(smallImage.getRGB(0, 0, smallImage.getWidth(), smallImage.getHeight(), null, 0, smallImage.getWidth()));
     }
-    
+
     private String handleCommand(final String cmdString) {
         System.out.println("Executing " + cmdString + " in " + Config.getInstance(this).getCodeBase());
-        // To capture output
         final StringBuilder output = new StringBuilder();
         try {
-            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmdString.trim().split(" ")));
+            String[] commandArray;
+            if (System.getProperty("os.name").startsWith("Windows")) {
+                commandArray = new String[]{"cmd.exe", "/c", cmdString};
+            } else {
+                commandArray = new String[]{"/bin/bash", "-c", cmdString};
+            }
+
+            ProcessBuilder pb = new ProcessBuilder(commandArray);
             pb.directory(Config.getInstance(this).getCodeBase());
             pb.redirectErrorStream(true);
             final Process process = pb.start();
-            
+
             Thread outputThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -631,7 +637,7 @@ public class Clippy {
                 }
             });
             outputThread.start();
-            
+
             if (process.waitFor(10, TimeUnit.SECONDS)) {
                 outputThread.join(); // Wait for the output reading thread to finish
             } else {
@@ -644,5 +650,5 @@ public class Clippy {
         }
         return output.toString();
     }
-    
+
 }

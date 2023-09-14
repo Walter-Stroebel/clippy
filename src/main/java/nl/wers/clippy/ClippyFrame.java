@@ -359,7 +359,7 @@ public class ClippyFrame extends JFrame {
                                 } else {
                                     if (selectedFile.getName().endsWith(".png")) {
                                         itemToCB.setEnabled(false);
-                                        tabbedPane.add(VIEW, new ImageViewer(selectedFile).getViewPanel());
+                                        tabbedPane.add(VIEW, new ImageViewer(selectedFile).getScalePanPanel());
                                         tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
                                     } else {
                                         itemToCB.setEnabled(true);
