@@ -1,6 +1,6 @@
 package nl.wers.clippy;
 
-import nl.infcomtec.simpelimage.ImageViewer;
+import nl.infcomtec.simpleimage.ImageViewer;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;

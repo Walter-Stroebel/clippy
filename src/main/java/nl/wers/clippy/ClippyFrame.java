@@ -42,7 +42,7 @@ import javax.swing.JToolBar;
 import javax.swing.SwingConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import nl.infcomtec.simpelimage.ImageViewer;
+import nl.infcomtec.simpleimage.ImageViewer;
 
 /**
  * ClippyFrame represents the main GUI for the Clippy application, providing an
