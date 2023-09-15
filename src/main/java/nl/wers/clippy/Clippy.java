@@ -1,6 +1,5 @@
 package nl.wers.clippy;
 
-import nl.infcomtec.simpleimage.ImageViewer;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
@@ -30,10 +29,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import nl.infcomtec.simpleimage.ImageViewer;
 
 /**
  * Clippy is a system tray application designed to monitor the clipboard and
@@ -568,15 +567,7 @@ public class Clippy {
      * @param imageFile The file containing the image to display.
      */
     private void displayImage(File imageFile) {
-        JFrame frame = new JFrame(imageFile.getName());
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        frame.setSize(800, 600);  // Adjust size as needed
-        frame.setLocationRelativeTo(gui);  // Center the frame
-        frame.setAlwaysOnTop(true);
-        ImageViewer iView = new ImageViewer(imageFile);
-        frame.getContentPane().setLayout(new BorderLayout());
-        frame.getContentPane().add(iView.getScalePanPanel(), BorderLayout.CENTER);
-        frame.setVisible(true);
+        new ImageViewer(imageFile).getScalePanFrame();
     }
 
     /**
