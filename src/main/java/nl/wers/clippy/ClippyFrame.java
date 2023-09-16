@@ -4,6 +4,7 @@ package nl.wers.clippy;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -23,6 +24,7 @@ import java.util.Comparator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
@@ -169,6 +171,13 @@ public class ClippyFrame extends JFrame {
         });
     }
 
+    private void setLastToolTip(JToolBar toolBar, String tip) {
+        Component c = toolBar.getComponent(toolBar.getComponentCount() - 1);
+        if (c instanceof AbstractButton) {
+            ((AbstractButton) c).setToolTipText(tip);
+        }
+    }
+
     public JToolBar buildToolBar(final Clippy clippy) {
         // Initialize JToolBar for primary actions
         JToolBar toolBar = new JToolBar();
@@ -178,12 +187,14 @@ public class ClippyFrame extends JFrame {
                 System.exit(0);
             }
         }));
+        setLastToolTip(toolBar, "Shutdown Clippy");
         toolBar.add(new JButton(new AbstractAction("Redo") {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 clippy.redoClipboard();
             }
         }));
+        setLastToolTip(toolBar, "Reevaluate the current clipboard contents");
         toolBar.addSeparator();
         // Input field for new group name
         final JTextField groupNameField = new JTextField(15); // 15 columns wide
@@ -202,6 +213,7 @@ public class ClippyFrame extends JFrame {
                 }
             }
         }));
+        setLastToolTip(toolBar, "Fill in the name, then press this button");
         toolBar.addSeparator();
         itemToCB = new JButton(new AbstractAction("Item -> CB") {
             @Override
@@ -219,6 +231,7 @@ public class ClippyFrame extends JFrame {
                 refreshGroupTab();
             }
         }));
+        setLastToolTip(toolBar, "Make the usage prompt an item in the current group");
         toolBar.add(new JButton(new AbstractAction("Prompt -> Item") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -226,7 +239,9 @@ public class ClippyFrame extends JFrame {
                 refreshGroupTab();
             }
         }));
+        setLastToolTip(toolBar, "Make the prompt creation guide an item in the current group");
         toolBar.add(itemToCB);
+        setLastToolTip(toolBar, "Copy the selected item to the clipboard");
         toolBar.addSeparator();
         toolBar.add(new JButton(new AbstractAction("Delete group") {
             @Override
@@ -249,7 +264,9 @@ public class ClippyFrame extends JFrame {
                 }
             }
         }));
+        setLastToolTip(toolBar, "Delete the current group");
         toolBar.add(iAmSure);
+        setLastToolTip(toolBar, "Check this box before deleting a group");
         toolBar.addSeparator();
         toolBar.add(new JButton(new AbstractAction("Change code base") {
             @Override
@@ -265,6 +282,7 @@ public class ClippyFrame extends JFrame {
                 }
             }
         }));
+        setLastToolTip(toolBar, "Change the working directory");
         return toolBar;
     }
 
