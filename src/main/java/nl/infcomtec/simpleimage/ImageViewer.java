@@ -40,6 +40,7 @@ public class ImageViewer {
     public List<Component> tools;
 
     protected ImageObject imgObj;
+    private LUT lut;
 
     public ImageViewer(ImageObject imgObj) {
         this.imgObj = imgObj;
@@ -86,7 +87,6 @@ public class ImageViewer {
         gr.dispose();
         imgObj = new ImageObject(img);
     }
-    private LUT lut;
 
     public synchronized ImageViewer addShadowView() {
         ButtonGroup bg = new ButtonGroup();
@@ -170,7 +170,7 @@ public class ImageViewer {
      * @return the JPanel.
      */
     public JPanel getScalePanPanelTools() {
-        final JPanel outer=new JPanel();
+        final JPanel outer = new JPanel();
         outer.setLayout(new BorderLayout());
         outer.add(new JPanelImpl(), BorderLayout.CENTER);
         if (null != tools) {
@@ -212,6 +212,10 @@ public class ImageViewer {
         return ret;
     }
 
+    public ImageObject getImageObject() {
+        return imgObj;
+    }
+
     private class JPanelImpl extends JPanel {
 
         int ofsX = 0;
@@ -227,6 +231,11 @@ public class ImageViewer {
                 public void mousePressed(MouseEvent e) {
                     lastX = e.getX();
                     lastY = e.getY();
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    imgObj.forwardMouse(ImageObject.MouseEvents.clicked, e);
                 }
 
                 @Override
@@ -252,10 +261,10 @@ public class ImageViewer {
             addMouseListener(ma);
             addMouseMotionListener(ma);
             addMouseWheelListener(ma);
-            imgObj.addListener(new ImageObject.ImageObjectListener() {
+            imgObj.addListener(new ImageObject.ImageObjectListener("Repaint") {
                 @Override
                 public void imageChanged(ImageObject imgObj) {
-                    dispImage=null;
+                    dispImage = null;
                     repaint(); // Repaint the panel to reflect any changes
                 }
             });

@@ -98,6 +98,11 @@ public class ImageMarker extends ImageViewer {
                 }
 
                 @Override
+                public void mouseClicked(MouseEvent e) {
+                    imgObj.forwardMouse(ImageObject.MouseEvents.clicked, e);
+                }
+
+                @Override
                 public void mouseDragged(MouseEvent e) {
                     if (null == lp) {
                         ofsX += e.getX() - lastX;
@@ -126,7 +131,7 @@ public class ImageMarker extends ImageViewer {
             addMouseListener(ma);
             addMouseMotionListener(ma);
             addMouseWheelListener(ma);
-            imgObj.addListener(new ImageObject.ImageObjectListener() {
+            imgObj.addListener(new ImageObject.ImageObjectListener("Repaint") {
                 @Override
                 public void imageChanged(ImageObject imgObj) {
                     repaint(); // Repaint the panel to reflect any changes
