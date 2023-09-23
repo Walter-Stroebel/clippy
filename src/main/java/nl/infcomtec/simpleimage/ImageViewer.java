@@ -41,6 +41,7 @@ public class ImageViewer {
 
     protected ImageObject imgObj;
     private LUT lut;
+    private List<Marker> marks;
 
     public ImageViewer(ImageObject imgObj) {
         this.imgObj = imgObj;
@@ -48,6 +49,17 @@ public class ImageViewer {
 
     public ImageViewer(Image image) {
         imgObj = new ImageObject(image);
+    }
+
+    public synchronized void addMarker(Marker marker) {
+        if (null == marks) {
+            marks = new LinkedList<>();
+        }
+        marks.add(marker);
+    }
+
+    public synchronized void clearMarkers() {
+        marks = null;
     }
 
     public ImageViewer(File f) {
@@ -133,6 +145,7 @@ public class ImageViewer {
      *
      * @param group Only one can be active.
      * @param action Choice.
+     * @return For chaining.
      */
     public synchronized ImageViewer addChoice(ButtonGroup group, Action action) {
         if (null == tools) {
@@ -285,6 +298,11 @@ public class ImageViewer {
                 g2.dispose();
                 if (null != lut) {
                     dispImage = lut.apply(dispImage);
+                }
+                if (null != marks) {
+                    for (Marker marker : marks) {
+                        marker.mark(dispImage);
+                    }
                 }
             }
             g.drawImage(dispImage, ofsX, ofsY, null);
