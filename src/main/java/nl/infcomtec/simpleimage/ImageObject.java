@@ -8,10 +8,10 @@ import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -63,12 +63,11 @@ public class ImageObject extends Image {
     }
 
     public enum MouseEvents {
-        clicked
+        clicked, dragged, moved, pressed, released
     };
 
     public synchronized void forwardMouse(MouseEvents ev, MouseEvent e) {
         for (ImageObjectListener listener : listeners) {
-            //System.out.println("Calling listener " + listener.name);
             listener.mouseEvent(this, ev, e);
         }
 
@@ -127,14 +126,17 @@ public class ImageObject extends Image {
         return image.getProperty(string, null);
     }
 
-    public HashMap<Point2D, BitShape> calculateClosestAreas(final Collection<Point2D> pois) {
+    public HashMap<String, BitShape> calculateClosestAreas(final Map<String, Point2D> pois) {
         long nanos = System.nanoTime();
-        final HashMap<Point2D, BitShape> ret = new HashMap<>();
-        for (Point2D p : pois) {
-            ret.put(p, new BitShape(getWidth()));
+        final HashMap<String, BitShape> ret = new HashMap<>();
+        for (Map.Entry<String, Point2D> e : pois.entrySet()) {
+            ret.put(e.getKey(), new BitShape(getWidth()));
         }
 
         int numThreads = Runtime.getRuntime().availableProcessors() - 2; // Number of threads to use, leaving some cores for routine work.
+        if (numThreads < 1) {
+            numThreads = 1;
+        }
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
 
         int rowsPerThread = getHeight() / numThreads;
@@ -147,11 +149,11 @@ public class ImageObject extends Image {
                     for (int y = yStart; y < yEnd; y++) {
                         for (int x = 0; x < getWidth(); x++) {
                             double d = 0;
-                            Point2D poi = null;
-                            for (Point2D p : pois) {
-                                double d2 = p.distance(x, y);
+                            String poi = null;
+                            for (Map.Entry<String, Point2D> e : pois.entrySet()) {
+                                double d2 = e.getValue().distance(x, y);
                                 if (poi == null || d2 < d) {
-                                    poi = p;
+                                    poi = e.getKey();
                                     d = d2;
                                 }
                             }
@@ -171,7 +173,8 @@ public class ImageObject extends Image {
         } catch (InterruptedException ex) {
             throw new RuntimeException("We are asked to stop?", ex);
         }
-        System.out.format("calculateClosestAreas W=%d,H=%d,P=%d,ns=%d\n", getWidth(), getHeight(), pois.size(), System.nanoTime() - nanos);
+        System.out.format("calculateClosestAreas W=%d,H=%d,P=%d,T=%.2f ms\n",
+                getWidth(), getHeight(), pois.size(), (System.nanoTime() - nanos) / 1e6);
         return ret;
     }
 

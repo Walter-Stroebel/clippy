@@ -56,10 +56,12 @@ public class ImageViewer {
             marks = new LinkedList<>();
         }
         marks.add(marker);
+        imgObj.putImage(null);
     }
 
     public synchronized void clearMarkers() {
         marks = null;
+        imgObj.putImage(null);
     }
 
     public ImageViewer(File f) {
@@ -242,8 +244,14 @@ public class ImageViewer {
 
                 @Override
                 public void mousePressed(MouseEvent e) {
+                    imgObj.forwardMouse(ImageObject.MouseEvents.pressed, e);
                     lastX = e.getX();
                     lastY = e.getY();
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    imgObj.forwardMouse(ImageObject.MouseEvents.released, e);
                 }
 
                 @Override
@@ -253,6 +261,7 @@ public class ImageViewer {
 
                 @Override
                 public void mouseDragged(MouseEvent e) {
+                    imgObj.forwardMouse(ImageObject.MouseEvents.dragged, e);
                     ofsX += e.getX() - lastX;
                     ofsY += e.getY() - lastY;
                     lastX = e.getX();
