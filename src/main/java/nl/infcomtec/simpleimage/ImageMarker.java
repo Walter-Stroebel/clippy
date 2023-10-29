@@ -18,9 +18,10 @@ import java.util.LinkedList;
 import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 /**
- * Simple image marker: add labelled points on an image.
+ * Simple image marker: add labeled points on an image.
  *
  * @author Walter Stroebel
  */
@@ -99,7 +100,11 @@ public class ImageMarker extends ImageViewer {
 
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    imgObj.forwardMouse(ImageObject.MouseEvents.clicked, e);
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.clicked_right, inverseTransform.transform(e.getPoint(), null));
+                    } else {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.clicked_left, inverseTransform.transform(e.getPoint(), null));
+                    }
                 }
 
                 @Override
@@ -133,7 +138,8 @@ public class ImageMarker extends ImageViewer {
             addMouseWheelListener(ma);
             imgObj.addListener(new ImageObject.ImageObjectListener("Repaint") {
                 @Override
-                public void imageChanged(ImageObject imgObj) {
+                public void imageChanged(ImageObject imgObj, double resizeHint) {
+                    scale *= resizeHint;
                     repaint(); // Repaint the panel to reflect any changes
                 }
             });

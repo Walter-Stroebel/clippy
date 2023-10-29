@@ -10,6 +10,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -27,6 +28,8 @@ import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 /**
  * Simple image viewer with drag and scale.
@@ -38,8 +41,12 @@ public class ImageViewer {
     private static final int MESSAGE_HEIGHT = 200;
     private static final int MESSAGE_WIDTH = 800;
     public List<Component> tools;
+    private String message = null;
+    private long messageMillis = 0;
+    private long shownLast = 0;
+    private Font messageFont = UIManager.getFont("Label.font");
 
-    protected ImageObject imgObj;
+    protected final ImageObject imgObj;
     private LUT lut;
     private List<Marker> marks;
 
@@ -49,6 +56,22 @@ public class ImageViewer {
 
     public ImageViewer(Image image) {
         imgObj = new ImageObject(image);
+    }
+
+    public synchronized void flashMessage(Font font, String msg, long millis) {
+        messageFont = font;
+        messageMillis = millis;
+        message = msg;
+        shownLast = 0;
+        imgObj.sendSignal(null);
+    }
+
+    public synchronized void flashMessage(String msg, long millis) {
+        flashMessage(messageFont, msg, millis);
+    }
+
+    public synchronized void flashMessage(String msg) {
+        flashMessage(messageFont, msg, 3000);
     }
 
     public synchronized void addMarker(Marker marker) {
@@ -65,11 +88,13 @@ public class ImageViewer {
     }
 
     public ImageViewer(File f) {
+        ImageObject tmp;
         try {
-            imgObj = new ImageObject(ImageIO.read(f));
+            tmp = new ImageObject(ImageIO.read(f));
         } catch (Exception ex) {
-            showError(f);
+            tmp = showError(f);
         }
+        imgObj = tmp;
     }
 
     /**
@@ -78,7 +103,7 @@ public class ImageViewer {
      *
      * @param f File we tried to load.
      */
-    private void showError(File f) {
+    private ImageObject showError(File f) {
         BufferedImage img = new BufferedImage(MESSAGE_WIDTH, MESSAGE_HEIGHT, BufferedImage.TYPE_BYTE_BINARY);
         Graphics2D gr = img.createGraphics();
         String msg1 = "Cannot open image:";
@@ -99,9 +124,15 @@ public class ImageViewer {
         gr.drawString(msg1, 50, MESSAGE_HEIGHT / 3);
         gr.drawString(msg2, 50, MESSAGE_HEIGHT / 3 * 2);
         gr.dispose();
-        imgObj = new ImageObject(img);
+        return new ImageObject(img);
     }
 
+    /**
+     * Often images have overly bright or dark areas. This permits to have a
+     * lighter or darker view.
+     *
+     * @return this for chaining.
+     */
     public synchronized ImageViewer addShadowView() {
         ButtonGroup bg = new ButtonGroup();
         addChoice(bg, new AbstractAction("Dark") {
@@ -117,7 +148,7 @@ public class ImageViewer {
                 lut = LUT.unity();
                 imgObj.putImage(null);
             }
-        });
+        }, true);
         addChoice(bg, new AbstractAction("Bright") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -145,16 +176,34 @@ public class ImageViewer {
     /**
      * Add a choice,
      *
-     * @param group Only one can be active.
+     * @param group If not null, only one choice in the group can be active.
      * @param action Choice.
      * @return For chaining.
      */
     public synchronized ImageViewer addChoice(ButtonGroup group, Action action) {
+        return addChoice(group, action, false);
+    }
+
+    /**
+     * Add a choice,
+     *
+     * @param group If not null, only one choice in the group can be active.
+     * @param action Choice.
+     * @param selected Only useful if true.
+     * @return For chaining.
+     */
+    public synchronized ImageViewer addChoice(ButtonGroup group, Action action, boolean selected) {
         if (null == tools) {
             tools = new LinkedList<>();
         }
         JCheckBox button = new JCheckBox(action);
-        group.add(button);
+        button.setSelected(selected);
+        if (null != group) {
+            group.add(button);
+            if (selected) {
+                group.setSelected(button.getModel(), selected);
+            }
+        }
         tools.add(button);
         return this;
     }
@@ -164,6 +213,40 @@ public class ImageViewer {
             tools = new LinkedList<>();
         }
         tools.add(new JButton(action));
+        return this;
+    }
+
+    public synchronized ImageViewer addMaxButton(String dsp) {
+        if (null == tools) {
+            tools = new LinkedList<>();
+        }
+        tools.add(new JButton(new AbstractAction(dsp) {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                imgObj.sendSignal(ScaleCommand.SCALE_MAX);
+            }
+        }));
+        return this;
+    }
+
+    public synchronized ImageViewer addOrgButton(String dsp) {
+        if (null == tools) {
+            tools = new LinkedList<>();
+        }
+        tools.add(new JButton(new AbstractAction(dsp) {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                imgObj.sendSignal(ScaleCommand.SCALE_ORG);
+            }
+        }));
+        return this;
+    }
+
+    public synchronized ImageViewer addAnything(Component comp) {
+        if (null == tools) {
+            tools = new LinkedList<>();
+        }
+        tools.add(comp);
         return this;
     }
 
@@ -231,6 +314,10 @@ public class ImageViewer {
         return imgObj;
     }
 
+    public enum ScaleCommand {
+        SCALE_ORG, SCALE_MAX
+    }
+
     private class JPanelImpl extends JPanel {
 
         int ofsX = 0;
@@ -238,35 +325,57 @@ public class ImageViewer {
         double scale = 1;
         private BufferedImage dispImage = null;
 
+        private Point pixelMouse(MouseEvent e) {
+            int ax = e.getX() - ofsX;
+            int ay = e.getY() - ofsY;
+            ax = (int) Math.round(ax / scale);
+            ay = (int) Math.round(ay / scale);
+            return new Point(ax, ay);
+        }
+
         public JPanelImpl() {
             MouseAdapter ma = new MouseAdapter() {
                 private int lastX, lastY;
 
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    imgObj.forwardMouse(ImageObject.MouseEvents.pressed, e);
-                    lastX = e.getX();
-                    lastY = e.getY();
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.pressed_right, pixelMouse(e));
+                    } else {
+                        lastX = e.getX();
+                        lastY = e.getY();
+                    }
                 }
 
                 @Override
                 public void mouseReleased(MouseEvent e) {
-                    imgObj.forwardMouse(ImageObject.MouseEvents.released, e);
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.released_right, pixelMouse(e));
+                    } else {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.released_left, pixelMouse(e));
+                    }
                 }
 
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    imgObj.forwardMouse(ImageObject.MouseEvents.clicked, e);
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.clicked_right, pixelMouse(e));
+                    } else {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.clicked_left, pixelMouse(e));
+                    }
                 }
 
                 @Override
                 public void mouseDragged(MouseEvent e) {
-                    imgObj.forwardMouse(ImageObject.MouseEvents.dragged, e);
-                    ofsX += e.getX() - lastX;
-                    ofsY += e.getY() - lastY;
-                    lastX = e.getX();
-                    lastY = e.getY();
-                    repaint(); // Repaint the panel to reflect the new position
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.dragged, pixelMouse(e));
+                    } else {
+                        ofsX += e.getX() - lastX;
+                        ofsY += e.getY() - lastY;
+                        lastX = e.getX();
+                        lastY = e.getY();
+                        repaint(); // Repaint the panel to reflect the new position
+                    }
                 }
 
                 @Override
@@ -285,9 +394,38 @@ public class ImageViewer {
             addMouseWheelListener(ma);
             imgObj.addListener(new ImageObject.ImageObjectListener("Repaint") {
                 @Override
-                public void imageChanged(ImageObject imgObj) {
+                public void imageChanged(ImageObject imgObj, double resizeHint) {
+                    // If the image we are displaying is for instance 512 pixels and
+                    // the new image is 1536, we need to adjust scaling to match.
+                    scale *= resizeHint;
                     dispImage = null;
                     repaint(); // Repaint the panel to reflect any changes
+                }
+
+                @Override
+                public void signal(Object any) {
+                    if (any instanceof ScaleCommand) {
+                        ScaleCommand sc = (ScaleCommand) any;
+                        switch (sc) {
+                            case SCALE_MAX: {
+                                double w = (1.0 * getWidth()) / imgObj.getWidth();
+                                double h = (1.0 * getHeight()) / imgObj.getHeight();
+                                System.out.format("%f %f %d %d\n", w, h, imgObj.getWidth(), getWidth());
+                                if (w > h) {
+                                    scale = h;
+                                } else {
+                                    scale = w;
+                                }
+                            }
+                            break;
+                            case SCALE_ORG: {
+                                scale = 1;
+                            }
+                            break;
+                        }
+                        dispImage = null;
+                    }
+                    repaint();
                 }
             });
             Dimension dim = new Dimension(imgObj.getWidth(), imgObj.getHeight());
@@ -303,7 +441,7 @@ public class ImageViewer {
                 int scaledHeight = (int) (imgObj.getHeight() * scale);
                 dispImage = new BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D g2 = dispImage.createGraphics();
-                g2.drawImage(imgObj.getScaledInstance(scaledWidth, scaledHeight, BufferedImage.SCALE_FAST), 0, 0, null);
+                g2.drawImage(imgObj.getScaledInstance(scaledWidth, scaledHeight, BufferedImage.SCALE_SMOOTH), 0, 0, null);
                 g2.dispose();
                 if (null != lut) {
                     dispImage = lut.apply(dispImage);
@@ -315,6 +453,22 @@ public class ImageViewer {
                 }
             }
             g.drawImage(dispImage, ofsX, ofsY, null);
+            if (null != message) {
+                if (0 == shownLast) {
+                    shownLast = System.currentTimeMillis();
+                }
+                if (shownLast + messageMillis >= System.currentTimeMillis()) {
+                    g.setFont(messageFont);
+                    g.setColor(Color.WHITE);
+                    g.setXORMode(Color.BLACK);
+                    int ofs = g.getFontMetrics().getHeight();
+                    System.out.println(message + " " + ofs);
+                    g.drawString(message, ofs, ofs * 2);
+                } else {
+                    message = null;
+                    shownLast = 0;
+                }
+            }
         }
     }
 }

@@ -3,7 +3,6 @@ package nl.infcomtec.simpleimage;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
@@ -33,24 +32,10 @@ public class ImageObject extends Image {
     }
 
     /**
-     * Image can only have one owner
-     *
      * @return The most recent image.
      */
     public BufferedImage getImage() {
-        try {
-            lock.acquire();
-        } catch (InterruptedException ex) {
-            throw new RuntimeException(ex);
-        }
         return image;
-    }
-
-    /**
-     * Just release the lock.
-     */
-    public void releaseImage() {
-        lock.release();
     }
 
     /**
@@ -62,34 +47,42 @@ public class ImageObject extends Image {
         listeners.add(listener);
     }
 
+    void sendSignal(Object msg) {
+        for (ImageObjectListener listener : listeners) {
+            listener.signal(msg);
+        }
+    }
+
     public enum MouseEvents {
-        clicked, dragged, moved, pressed, released
+        clicked_left, clicked_right, dragged, moved, pressed_left, released_left, pressed_right, released_right
     };
 
-    public synchronized void forwardMouse(MouseEvents ev, MouseEvent e) {
+    public synchronized void forwardMouse(MouseEvents ev, Point2D p) {
         for (ImageObjectListener listener : listeners) {
-            listener.mouseEvent(this, ev, e);
+            listener.mouseEvent(this, ev, p);
         }
-
     }
 
     /**
-     * Replace image or release image.
+     * Replace image.
      *
      * @param replImage If null image may still have been altered in place, else
      * replace image with replImage. All listeners will be notified.
      */
     public synchronized final void putImage(Image replImage) {
+        int oldWid = null == this.image ? 0 : this.image.getWidth();
         if (null != replImage) {
             this.image = new BufferedImage(replImage.getWidth(null), replImage.getHeight(null), BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2 = this.image.createGraphics();
             g2.drawImage(replImage, 0, 0, null);
             g2.dispose();
         }
-        releaseImage();
         for (ImageObjectListener listener : listeners) {
-            //System.out.println("Calling listener " + listener.name);
-            listener.imageChanged(this);
+            if (0 == oldWid) {
+                listener.imageChanged(this, 1.0);
+            } else {
+                listener.imageChanged(this, 1.0 * oldWid / this.image.getWidth());
+            }
         }
     }
 
@@ -193,12 +186,30 @@ public class ImageObject extends Image {
          * Image may have been altered.
          *
          * @param imgObj Source.
+         * @param resizeHint The width of the previous image divided by the
+         * width of the new image. See ImageViewer why this is useful.
          */
-        public void imageChanged(ImageObject imgObj) {
+        public void imageChanged(ImageObject imgObj, double resizeHint) {
             // default is no action
         }
 
-        public void mouseEvent(ImageObject imgObj, MouseEvents ev, MouseEvent e) {
+        /**
+         * Used to forward mouse things by viewer implementations.
+         *
+         * @param imgObj Source.
+         * @param ev Our event definition.
+         * @param p Point of the event in image pixels.
+         */
+        public void mouseEvent(ImageObject imgObj, MouseEvents ev, Point2D p) {
+            // default ignore
+        }
+
+        /**
+         * Generic signal, generally causes viewer implementations to repaint.
+         *
+         * @param any
+         */
+        public void signal(Object any) {
             // default ignore
         }
     }
