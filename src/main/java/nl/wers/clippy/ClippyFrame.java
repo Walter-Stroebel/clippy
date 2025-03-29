@@ -146,7 +146,7 @@ public class ClippyFrame extends JFrame {
 
         JToolBar toolBar = buildToolBar(clippy);
         getContentPane().add(toolBar, BorderLayout.NORTH);
-        File[] groups = clippy.workDir.get().getParentFile().listFiles();
+        File[] groups = Clippy.workDir.get().getParentFile().listFiles();
         if (null == groups) {
             // at the very least an array with "default" should be returned.
             Logger.getLogger(ClippyFrame.class.getName()).log(Level.SEVERE, "Logic error!");
@@ -157,7 +157,7 @@ public class ClippyFrame extends JFrame {
                 addGroupTab(g);
             }
         }
-        refreshGroupTab(clippy.workDir.get());
+        refreshGroupTab(Clippy.workDir.get());
         tabbedPane.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent ce) {
@@ -165,7 +165,7 @@ public class ClippyFrame extends JFrame {
                 int selectedIndex = sourceTabbedPane.getSelectedIndex();
                 String title = sourceTabbedPane.getTitleAt(selectedIndex);
                 if (!title.equals(VIEW)) {
-                    clippy.workDir.set(new File(clippy.workDir.get().getParentFile(), title));
+                    Clippy.workDir.set(new File(Clippy.workDir.get().getParentFile(), title));
                 }
             }
         });
@@ -173,12 +173,12 @@ public class ClippyFrame extends JFrame {
 
     private void setLastToolTip(JToolBar toolBar, String tip) {
         Component c = toolBar.getComponent(toolBar.getComponentCount() - 1);
-        if (c instanceof AbstractButton) {
-            ((AbstractButton) c).setToolTipText(tip);
+        if (c instanceof AbstractButton abstractButton) {
+            abstractButton.setToolTipText(tip);
         }
     }
 
-    public JToolBar buildToolBar(final Clippy clippy) {
+    public final JToolBar buildToolBar(final Clippy clippy) {
         // Initialize JToolBar for primary actions
         JToolBar toolBar = new JToolBar();
         toolBar.add(new JButton(new AbstractAction("Exit") {
@@ -354,8 +354,7 @@ public class ClippyFrame extends JFrame {
                     @Override
                     public void actionPerformed(ActionEvent ae) {
                         Object source = ae.getSource();
-                        if (source instanceof JToggleButton) {
-                            JToggleButton bt = (JToggleButton) source;
+                        if (source instanceof JToggleButton bt) {
                             if (bt.isSelected()) {
                                 while (true) {
                                     int index = tabbedPane.indexOfTab(VIEW);
@@ -468,11 +467,11 @@ public class ClippyFrame extends JFrame {
      * Creates a new group (directory) under the ".clippy" directory.
      */
     void createNewGroup(final Clippy clippy, String groupName) {
-        File newGroupDir = new File(clippy.workDir.get().getParentFile(), groupName);
+        File newGroupDir = new File(Clippy.workDir.get().getParentFile(), groupName);
         if (!newGroupDir.exists()) {
             newGroupDir.mkdir();
         }
-        clippy.workDir.set(newGroupDir);
-        refreshGroupTab(clippy.workDir.get());
+        Clippy.workDir.set(newGroupDir);
+        refreshGroupTab(Clippy.workDir.get());
     }
 }

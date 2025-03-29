@@ -160,7 +160,7 @@ public class Clippy {
     }
 
     public void copyResourceToItem(String name) {
-        try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
+        try (InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
             Files.copy(is, new File(generateUniqueFilename(".txt")).toPath());
         } catch (IOException ex) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
@@ -168,8 +168,8 @@ public class Clippy {
     }
 
     public String getResourceAsString(String name) {
-        try ( InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
-            try ( DataInputStream dis = new DataInputStream(is)) {
+        try (InputStream is = Clippy.class.getClassLoader().getResourceAsStream(name)) {
+            try (DataInputStream dis = new DataInputStream(is)) {
                 return new String(dis.readAllBytes(), StandardCharsets.UTF_8);
             }
         } catch (IOException ex) {
@@ -290,7 +290,7 @@ public class Clippy {
                 @Override
                 public void run() {
                     while (true) {
-                        try ( Socket clientSocket = serverSocket.accept();  BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+                        try (Socket clientSocket = serverSocket.accept(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
                             String inputLine;
                             StringBuilder receivedData = new StringBuilder();
                             while ((inputLine = in.readLine()) != null) {
@@ -301,7 +301,7 @@ public class Clippy {
                             // Save the received data to a file
                             String filename = generateUniqueFilename(".txt");
                             File outputFile = new File(workDir.get(), filename);
-                            try ( BufferedWriter out = new BufferedWriter(new FileWriter(outputFile))) {
+                            try (BufferedWriter out = new BufferedWriter(new FileWriter(outputFile))) {
                                 out.write(receivedData.toString());
                             }
                         } catch (IOException ex) {
@@ -377,7 +377,7 @@ public class Clippy {
         }
 
         // Save the current text to the new file
-        try ( FileWriter writer = new FileWriter(outputFile)) {
+        try (FileWriter writer = new FileWriter(outputFile)) {
             writer.write(currentText);
         } catch (IOException ex) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
@@ -404,7 +404,7 @@ public class Clippy {
      * @param currentText The detected DOT content.
      */
     private void handleSVG(String currentText) {
-        String filename = JOptionPane.showInputDialog(gui, "Filename (without extension):", "PlantUML", JOptionPane.QUESTION_MESSAGE);
+        String filename = JOptionPane.showInputDialog(gui, "Filename (without extension):", "SVG", JOptionPane.QUESTION_MESSAGE);
         filename = filename.trim();
         File svgFile = new File(workDir.get(), filename + ".svg");
         File pngFile = new File(workDir.get(), filename + ".png");
@@ -417,7 +417,7 @@ public class Clippy {
         }
 
         // Save the current text to the new file
-        try ( FileWriter writer = new FileWriter(svgFile)) {
+        try (FileWriter writer = new FileWriter(svgFile)) {
             writer.write(currentText);
         } catch (IOException ex) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
@@ -490,7 +490,7 @@ public class Clippy {
         } else {
             File outputFile = new File(generateUniqueFilename(".txt"));
             // Save the current text to the new file
-            try ( FileWriter writer = new FileWriter(outputFile)) {
+            try (FileWriter writer = new FileWriter(outputFile)) {
                 writer.write(currentText);
             } catch (IOException ex) {
                 Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
@@ -541,7 +541,7 @@ public class Clippy {
         }
 
         // Save the current text to the new file
-        try ( FileWriter writer = new FileWriter(outputFile)) {
+        try (FileWriter writer = new FileWriter(outputFile)) {
             writer.write(currentText);
         } catch (IOException ex) {
             Logger.getLogger(Clippy.class.getName()).log(Level.SEVERE, null, ex);
@@ -617,7 +617,7 @@ public class Clippy {
             Thread outputThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    try ( BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             output.append(line).append("\n");
